@@ -1,0 +1,14 @@
+Make a few Kernel types, convert the syntactic entities to these using a Visitor.
+    http://pypy.readthedocs.org/en/latest/rlib.html#visitors
+
+Make a basic interpreter:
+    environments
+        Use dictionaries to begin with; later we can optimize these by converting them to maps:
+            http://morepypy.blogspot.com.es/2011/03/controlling-tracing-of-interpreter-with_21.html
+            Maybe we can use some of Pycket's environment optimizations.  Study them while keeping in mind that Kernel has first class environments. 
+    continuations
+        Use Pycket's trampoline-based implementation
+        Do Guarded continuations pretty early, because that's where I perceive the biggest risk and complication, and it may be traumatic to retrofit later on
+    start with immutable lists
+    don't worry about cyclic lists in the beginning
+        and maybe don't ever, esp. if I stick to immutable lists

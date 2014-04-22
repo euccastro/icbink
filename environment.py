@@ -1,3 +1,5 @@
+import kernel_type as kt
+
 #XXX: proper exception handling
 class NotFound(Exception):
     def __init__(self, val):
@@ -6,15 +8,18 @@ class NotFound(Exception):
 class Environment(object):
     def __init__(self, parents, bindings):
         self.parents = parents
-        assert isinstance(bindings, dict)
         self.bindings = bindings
     def lookup(self, symbol):
         try:
-            return self.bindings[symbol]
+            ret = self.bindings[symbol]
+            assert isinstance(ret, kt.KernelObject)
+            return ret
         except KeyError:
             for parent in self.parents:
                 try:
-                    return parent.lookup(symbol)
+                    ret = parent.lookup(symbol)
+                    assert isinstance(ret, kt.KernelObject)
+                    return ret
                 except NotFound:
                     pass
             raise NotFound(symbol)

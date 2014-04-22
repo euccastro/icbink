@@ -38,17 +38,17 @@ class Symbol(KernelObject):
     def tostring(self):
         return self.value
 
-    symbol_table = {}
-    @classmethod
-    @jit.elidable
-    def get_interned(cls, name):
-        try:
-            return cls.symbol_table[name]
-        except KeyError:
-            ret = cls.symbol_table[name] = Symbol(name)
-            return ret
     def interpret_simple(self, env):
         return env.lookup(self)
+
+_symbol_table = {}
+
+def get_interned(name):
+    try:
+        return _symbol_table[name]
+    except KeyError:
+        ret = _symbol_table[name] = Symbol(name)
+        return ret
 
 class Nil(KernelObject):
     @jit.elidable

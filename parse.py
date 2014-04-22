@@ -31,10 +31,10 @@ class Visitor(RPythonVisitor):
     def visit_BOOLEAN(self, node):
         return kt.true if node.token.source == "#t" else kt.false
     def visit_IDENTIFIER(self, node):
-        return kt.Symbol.get_interned(node.token.source)
+        return kt.get_interned(node.token.source)
     def visit_STRING(self, node):
         # Remove quotation marks.
-        return kt.String(node.token.source[1:-1])
+        return kt.String(node.token.source[:-1][1:])
     def visit_list(self, node):
         return build_pair_chain([self.dispatch(c) for c in node.children]
                                 + [kt.nil])

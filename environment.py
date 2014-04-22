@@ -12,13 +12,11 @@ class Environment(object):
     def lookup(self, symbol):
         try:
             ret = self.bindings[symbol]
-            assert isinstance(ret, kt.KernelObject)
             return ret
         except KeyError:
             for parent in self.parents:
                 try:
                     ret = parent.lookup(symbol)
-                    assert isinstance(ret, kt.KernelObject)
                     return ret
                 except NotFound:
                     pass

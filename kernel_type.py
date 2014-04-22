@@ -1,6 +1,10 @@
 from rpython.rlib import jit
 
-class KernelObject(object):
+class KernelTypeError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+class KernelValue(object):
     simple = True
     def equal(self, other):
         return other is self
@@ -14,9 +18,13 @@ class KernelObject(object):
         return cont.plug_reduce(self.interpret_simple(env))
     def interpret_simple(self, env):
         return self
+    def combine(self, operands, env, cont):
+        raise KernelTypeError("%s %s is not callable"
+                              % (self.__class__.__name__,
+                                 self.tostring()))
 
 #XXX: Unicode
-class String(KernelObject):
+class String(KernelValue):
     _immutable_fields_ = ['value']
     def __init__(self, value):
         assert isinstance(value, str)
@@ -26,7 +34,7 @@ class String(KernelObject):
         return '"%s"' % self.value
 
 #XXX: Unicode
-class Symbol(KernelObject):
+class Symbol(KernelValue):
 
     _immutable_fields_ = ['value']
 
@@ -50,14 +58,14 @@ def get_interned(name):
         ret = _symbol_table[name] = Symbol(name)
         return ret
 
-class Nil(KernelObject):
+class Nil(KernelValue):
     @jit.elidable
     def tostring(self):
         return "()"
 
 nil = Nil()
 
-class Boolean(KernelObject):
+class Boolean(KernelValue):
     _immutable_fields_ = ['value']
     def __init__(self, value):
         assert isinstance(value, bool)
@@ -69,18 +77,18 @@ class Boolean(KernelObject):
 true = Boolean(True)
 false = Boolean(False)
 
-class Pair(KernelObject):
+class Pair(KernelValue):
     _immutable_fields_ = ['car', 'cdr']
     def __init__(self, car, cdr):
         # XXX: specialize for performance?
-        assert isinstance(car, KernelObject)
-        assert isinstance(cdr, KernelObject)
+        assert isinstance(car, KernelValue)
+        assert isinstance(cdr, KernelValue)
         self.car = car
         self.cdr = cdr
     def tostring(self):
         return "(%s . %s)" % (self.car.tostring(), self.cdr.tostring())
 
-class Program(KernelObject):
+class Program(KernelValue):
     """Not a real Kernel value; just to keep RPython happy."""
     def __init__(self, exprs):
         self.exprs = exprs

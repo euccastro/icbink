@@ -92,7 +92,7 @@ class Pair(KernelValue):
     def tostring(self):
         return "(%s . %s)" % (self.car.tostring(), self.cdr.tostring())
     def interpret(self, env, cont):
-        return self.car, env, CombineContinuation(self.cdr, env, cont)
+        return self.car, env, CombineCont(self.cdr, env, cont)
 
 class Combiner(KernelValue):
     pass
@@ -118,7 +118,7 @@ class Applicative(Combiner):
     def combine(self, operands, env, cont):
         return evaluate_arguments(operands,
                                   env,
-                                  ApplyContinuation(self.combiner, env, cont))
+                                  ApplyCont(self.combiner, env, cont))
 
 class Program(KernelValue):
     """Not a real Kernel value; just to keep RPython happy."""
@@ -163,7 +163,7 @@ class TerminalCont(Continuation):
 
 def evaluate_arguments(vals, env, cont):
     if isinstance(vals, Pair):
-        return vals.car, env, continuation.EvalArgsCont(vals, env, cont)
+        return vals.car, env, EvalArgsCont(vals, env, cont)
     else:
         return cont.plug_reduce(nil)
 

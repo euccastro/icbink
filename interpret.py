@@ -54,7 +54,11 @@ def test():
     env = standard_environment()
     env.set(kt.get_interned('x'), kt.String('the-value-bound-by-x'))
     for expr_str, typ, value in [('"one"', kt.String, 'one'),
-                                 ('x', kt.String, 'the-value-bound-by-x')]:
+                                 ('x', kt.String, 'the-value-bound-by-x'),
+                                 ('(string-append)', kt.String, ''),
+                                 ('(string-append "one")', kt.String, 'one'),
+                                 ('(string-append "one" "two")', kt.String, 'onetwo'),
+                                 ]:
         result = keval(expr_str, env)
         assert isinstance(result, typ)
         assert result.value == value

@@ -1,5 +1,7 @@
 #-*- coding: utf-8 -*-
 
+__all__ = ['parse']
+
 from rpython.rlib.parsing.ebnfparse import parse_ebnf, make_parse_function
 from rpython.rlib.parsing.parsing import ParseError
 from rpython.rlib.parsing.tree import RPythonVisitor
@@ -49,16 +51,22 @@ def build_pair_chain(lst, start=0):
         return kt.Pair(lst[start], build_pair_chain(lst, start+1))
 
 regexs, rules, ToAST = parse_ebnf(grammar)
-parse = make_parse_function(regexs, rules, eof=True)
+parse_ebnf = make_parse_function(regexs, rules, eof=True)
 
-try:
-    ast = parse('($one #t (#f () . ("5"))) "2"; This is a comment.\n"2.5" ( "3" "3.5" . "rest" ) \n"4.6" ("1") ("3" . ()) ("4" ()) ')
-    #ast.view()
-    transformed = ToAST().transform(ast)
-    #transformed.view()
-    program = Visitor().dispatch(transformed)
-except ParseError as e:
-    print e.nice_error_message()
-import pdb
-pdb.set_trace()
+def parse(s):
+    return Visitor().dispatch(ToAST().transform(parse_ebnf(s)))
 
+def test():
+    try:
+        ast = parse('($one #t (#f () . ("5"))) "2"; This is a comment.\n"2.5" ( "3" "3.5" . "rest" ) \n"4.6" ("1") ("3" . ()) ("4" ()) ')
+        #ast.view()
+        transformed = ToAST().transform(ast)
+        #transformed.view()
+        program = Visitor().dispatch(transformed)
+    except ParseError as e:
+        print e.nice_error_message()
+    import pdb
+    pdb.set_trace()
+
+if __name__ == '__main__':
+    test()

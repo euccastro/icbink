@@ -1,6 +1,7 @@
 from rpython.rlib import jit
 
 class KernelObject(object):
+    simple = True
     def equal(self, other):
         return other is self
     @jit.elidable
@@ -8,6 +9,11 @@ class KernelObject(object):
         return other is self
     def tostring(self):
         return str(self)
+    def interpret(self, env, cont):
+        assert self.simple
+        return cont.plug_reduce(self.interpret_simple(env))
+    def interpret_simple(self, env):
+        return self
 
 #XXX: Unicode
 class String(KernelObject):
@@ -41,6 +47,8 @@ class Symbol(KernelObject):
         except KeyError:
             ret = cls.symbol_table[name] = Symbol(name)
             return ret
+    def interpret_simple(self, env):
+        return env.lookup(self)
 
 class Nil(KernelObject):
     @jit.elidable

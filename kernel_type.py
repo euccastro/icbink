@@ -22,9 +22,11 @@ class KernelValue(object):
     def interpret_simple(self, env):
         return self
     def combine(self, operands, env, cont):
-        raise KernelTypeError("%s %s is not callable"
-                              % (self.__class__.__name__,
-                                 self.tostring()))
+        raise KernelTypeError("I'm not callable")
+# XXX: investigate why RPython doesn't like this:
+#        raise KernelTypeError("%s %s is not callable"
+#                              % (self.__class__.__name__,
+#                                 self.tostring()))
 
 #XXX: Unicode
 class String(KernelValue):

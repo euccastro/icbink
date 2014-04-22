@@ -11,20 +11,16 @@ def empty_environment():
 def _simple_applicative(fn):
     return kt.Applicative(kt.SimplePrimitive(fn))
 
-class _GroundEnvironmentContainer:
-    env = None
-
 def pythonify(s):
     return s.replace('-', '_')
 
-def init_ground_environment():
-    d = dict([(kt.get_interned(name),
-               _simple_applicative(getattr(primitive, pythonify(name))))
-              for name in ['string-append']])
-    _GroundEnvironmentContainer.env = kt.Environment([], d)
+_ground_env = kt.Environment([],
+                             dict([(kt.get_interned(name),
+                                   _simple_applicative(getattr(primitive, pythonify(name))))
+                                   for name in ['string-append']]))
 
 def standard_environment():
-    return kt.Environment([_GroundEnvironmentContainer.env], {})
+    return kt.Environment([_ground_env], {})
 
 def run_one_expr(val, env):
     cont = kt.TerminalCont()
@@ -50,7 +46,6 @@ def keval(expr_str, env):
     return run_one_expr(expr, env)
 
 def test():
-    init_ground_environment()
     env = standard_environment()
     env.set(kt.get_interned('x'), kt.String('the-value-bound-by-x'))
     for expr_str, typ, value in [('"one"', kt.String, 'one'),

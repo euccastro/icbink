@@ -1,6 +1,3 @@
-Make a few Kernel types, convert the syntactic entities to these using a Visitor.
-    http://pypy.readthedocs.org/en/latest/rlib.html#visitors
-
 Make a basic interpreter:
     environments
         Use dictionaries to begin with; later we can optimize these by converting them to maps:
@@ -12,3 +9,7 @@ Make a basic interpreter:
     start with immutable lists
     don't worry about cyclic lists in the beginning
         and maybe don't ever, esp. if I stick to immutable lists
+
+--- Postponed
+
+Check out pypy/rpython/rlib/parsing/lexer.py:SourcePos when we want to use source position for debugging and exceptions.

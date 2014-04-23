@@ -55,5 +55,5 @@ def check_guards(guards):
         #XXX: kernelized error handling
         assert isinstance(selector, kt.Continuation)
         assert isinstance(interceptor, kt.Applicative)
-        assert isinstance(interceptor.combiner, kt.Operative)
+        assert isinstance(interceptor.wrapped_combiner, kt.Operative)
 

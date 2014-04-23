@@ -147,11 +147,11 @@ def select_interceptors(cont, cls):
 class Applicative(Combiner):
     def __init__(self, combiner):
         #XXX: rename to wrapped_combiner
-        self.combiner = combiner
+        self.wrapped_combiner = combiner
     def combine(self, operands, env, cont):
         return evaluate_arguments(operands,
                                   env,
-                                  ApplyCont(self.combiner, env, cont))
+                                  ApplyCont(self.wrapped_combiner, env, cont))
 
 class Program(KernelValue):
     """Not a real Kernel value; just to keep RPython happy."""
@@ -265,7 +265,7 @@ class InterceptCont(Continuation):
         Continuation.__init__(self, outer_cont)
         self.next_cont = next_cont
         assert isinstance(interceptor, Applicative)
-        self.interceptor = interceptor.combiner
+        self.interceptor = interceptor.wrapped_combiner
 
     def plug_reduce(self, val):
         outer_cont = self.prev

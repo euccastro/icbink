@@ -8,16 +8,7 @@ import primitive
 def empty_environment():
     return kt.Environment([], {})
 
-def _simple_applicative(fn):
-    return kt.Applicative(kt.SimplePrimitive(fn))
-
-def pythonify(s):
-    return s.replace('-', '_')
-
-_ground_env = kt.Environment([],
-                             dict([(kt.get_interned(name),
-                                   _simple_applicative(getattr(primitive, pythonify(name))))
-                                   for name in ['string-append']]))
+_ground_env = kt.Environment([], primitive.exports)
 
 def standard_environment():
     return kt.Environment([_ground_env], {})

@@ -1,5 +1,18 @@
 Make a basic interpreter:
     Do Guarded continuations pretty early, because that's where I perceive the biggest risk and complication, and it may be traumatic to retrofit later on
+        Start with guard-continuation
+            (guard-continuation entry-guards continuation exit-guards) -> inner continuation
+            Construct two continuations:
+                outer
+                    contém entry guards
+                inner (return value)
+                    contém exit guards
+                Ambas guardam tamém o dynamic environment da chamada a guard-continuation
+                    vira o entorno para a ativaçom dos entry and exit guards
+                normally they just pass their value to the parent.
+                    i.e. def plug_reduce(val):
+                            return self.prev.plug_reduce(val) 
+                
         Guarded continuation-based exception handling.
 
 --- Postponed

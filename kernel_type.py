@@ -123,9 +123,13 @@ def abnormally_pass(operands, src_cont, dst_cont):
     dst_cont.mark(False)
     src_cont.mark(True)
     entering = select_interceptors(dst_cont, OuterGuardCont)
-    entering.reverse()
     src_cont.mark(False)
-    return InterceptCont(exiting+entering, 0, dst_cont).plug_reduce(operands)
+    cont = dst_cont
+    for outer, interceptor in entering:
+        cont = InterceptCont(interceptor, cont, outer)
+    for outer, interceptor in reversed(exiting):
+        cont = InterceptCont(interceptor, cont, outer)
+    return cont.plug_reduce(operands)
 
 def select_interceptors(cont, cls):
     ls = []
@@ -135,13 +139,14 @@ def select_interceptors(cont, cls):
                 selector, interceptor = pythonify_list(guard)
                 if selector.marked:
                     outer_cont = cont if isinstance(cont, OuterGuardCont) else cont.prev
-                    ls.append((outer_cont, interceptor))  #XXX: pack this better
+                    ls.append((outer_cont, interceptor))
                     break
         cont = cont.prev
     return ls
 
 class Applicative(Combiner):
     def __init__(self, combiner):
+        #XXX: rename to wrapped_combiner
         self.combiner = combiner
     def combine(self, operands, env, cont):
         return evaluate_arguments(operands,
@@ -252,18 +257,21 @@ class OuterGuardCont(GuardCont):
     pass
 
 class InterceptCont(Continuation):
-    def __init__(self, guards, index, prev):
-        self.clauses = guards  # XXX: pack this better
-        self.index = index
-        self.prev = prev
+    def __init__(self, interceptor, next_cont, outer_cont):
+        # The outer continuation is the parent of this one for the purposes of
+        # abnormal passes, but normal return from this continuation goes to the
+        # next interceptor (or to the destination, if this is the last one)
+        # instead.
+        Continuation.__init__(self, outer_cont)
+        self.next_cont = next_cont
+        assert isinstance(interceptor, Applicative)
+        self.interceptor = interceptor.combiner
+
     def plug_reduce(self, val):
-        if self.index >= len(self.clauses):
-            return self.prev.plug_reduce(val)
-        outer_cont, interceptor = self.clauses[self.index]
-        return interceptor.combiner.combine(
-                Pair(val, ContWrapper(outer_cont)),
-                outer_cont.env,
-                InterceptCont(self.clauses, self.index + 1, self.prev))
+        outer_cont = self.prev
+        return self.interceptor.combine(Pair(val, ContWrapper(outer_cont)),
+                                        outer_cont.env,
+                                        self.next_cont)
 
 def iter_list(vals):
     while isinstance(vals, Pair):

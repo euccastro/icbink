@@ -1,5 +1,6 @@
 from rpython.rlib import jit
 
+
 class KernelError(Exception):
     def __init__(self, msg):
         self.msg = msg
@@ -22,11 +23,7 @@ class KernelValue(object):
     def interpret_simple(self, env):
         return self
     def combine(self, operands, env, cont):
-        raise KernelTypeError("I'm not callable")
-# XXX: investigate why RPython doesn't like this:
-#        raise KernelTypeError("%s %s is not callable"
-#                              % (self.__class__.__name__,
-#                                 self.tostring()))
+        raise KernelTypeError("%s is not callable" % self.tostring())
 
 #XXX: Unicode
 class String(KernelValue):
@@ -114,6 +111,35 @@ class SimplePrimitive(Operative):
     def combine(self, operands, env, cont):
         return cont.plug_reduce(self.code(operands))
 
+class ContWrapper(Operative):
+    def __init__(self, cont):
+        self.cont = cont
+    def combine(self, operands, env, cont):
+        return abnormally_pass(operands, cont, self.cont)
+
+def abnormally_pass(operands, src_cont, dst_cont):
+    dst_cont.mark(True)
+    exiting = select_interceptors(src_cont, InnerGuardCont)
+    dst_cont.mark(False)
+    src_cont.mark(True)
+    entering = select_interceptors(dst_cont, OuterGuardCont)
+    entering.reverse()
+    src_cont.mark(False)
+    return InterceptCont(exiting+entering, 0, dst_cont).plug_reduce(operands)
+
+def select_interceptors(cont, cls):
+    ls = []
+    while cont is not None and not cont.marked:
+        if isinstance(cont, cls):
+            for guard in iter_list(cont.guards):
+                selector, interceptor = pythonify_list(guard)
+                if selector.marked:
+                    outer_cont = cont if isinstance(cont, OuterGuardCont) else cont.prev
+                    ls.append((outer_cont, interceptor))  #XXX: pack this better
+                    break
+        cont = cont.prev
+    return ls
+
 class Applicative(Combiner):
     def __init__(self, combiner):
         self.combiner = combiner
@@ -128,9 +154,6 @@ class Program(KernelValue):
         self.exprs = exprs
     def tostring(self):
         return str([expr.tostring() for expr in self.exprs])
-
-class Continuation(KernelValue):
-    pass
 
 class NotFound(KernelError):
     def __init__(self, val):
@@ -155,11 +178,25 @@ class Environment(KernelValue):
                     pass
             raise NotFound(symbol)
 
+class Continuation(KernelValue):
+    _immutable_args_ = ['prev']
+    def __init__(self, prev):
+        self.prev = prev
+        self.marked = False
+    def plug_reduce(self, val):
+        return self.prev.plug_reduce(val)
+    def mark(self, boolean):
+        self.marked = boolean
+        if self.prev is not None:
+            self.prev.mark(boolean)
+
 class Done(Exception):
     def __init__(self, value):
         self.value = value
 
 class TerminalCont(Continuation):
+    def __init__(self):
+        Continuation.__init__(self, None)
     def plug_reduce(self, val):
         raise Done(val)
 
@@ -170,10 +207,10 @@ def evaluate_arguments(vals, env, cont):
         return cont.plug_reduce(nil)
 
 class EvalArgsCont(Continuation):
-    def __init__(self, vals, env, cont):
+    def __init__(self, vals, env, prev):
+        Continuation.__init__(self, prev)
         self.vals = vals
         self.env = env
-        self.prev = cont
     def plug_reduce(self, val):
         return evaluate_arguments(self.vals.cdr,
                                   self.env,
@@ -181,23 +218,61 @@ class EvalArgsCont(Continuation):
 
 class GatherArgsCont(Continuation):
     def __init__(self, val, prev):
+        Continuation.__init__(self, prev)
         self.val = val
-        self.prev = prev
     def plug_reduce(self, val):
         return self.prev.plug_reduce(Pair(self.val, val))
 
 class ApplyCont(Continuation):
     def __init__(self, combiner, env, prev):
+        Continuation.__init__(self, prev)
         self.combiner = combiner
         self.env = env
-        self.prev = prev
     def plug_reduce(self, args):
         return self.combiner.combine(args, self.env, self.prev)
 
 class CombineCont(Continuation):
     def __init__(self, operands, env, prev):
+        Continuation.__init__(self, prev)
         self.operands = operands
         self.env = env
-        self.prev = prev
     def plug_reduce(self, val):
         return val.combine(self.operands, self.env, self.prev)
+
+class GuardCont(Continuation):
+    def __init__(self, guards, env, prev):
+        Continuation.__init__(self, prev)
+        self.guards = guards
+        self.env = env
+
+class InnerGuardCont(GuardCont):
+    pass
+
+class OuterGuardCont(GuardCont):
+    pass
+
+class InterceptCont(Continuation):
+    def __init__(self, guards, index, prev):
+        self.clauses = guards  # XXX: pack this better
+        self.index = index
+        self.prev = prev
+    def plug_reduce(self, val):
+        if self.index >= len(self.clauses):
+            return self.prev.plug_reduce(val)
+        outer_cont, interceptor = self.clauses[self.index]
+        return interceptor.combiner.combine(
+                Pair(val, ContWrapper(outer_cont)),
+                outer_cont.env,
+                InterceptCont(self.clauses, self.index + 1, self.prev))
+
+def iter_list(vals):
+    while isinstance(vals, Pair):
+        yield vals.car
+        vals = vals.cdr
+    assert vals is nil
+
+def pythonify_list(vals):
+    ret = []
+    for item in iter_list(vals):
+        ret.append(item)
+    return ret

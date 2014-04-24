@@ -113,6 +113,18 @@ class Combiner(KernelValue):
 class Operative(Combiner):
     pass
 
+class CompoundOperative(Operative):
+    def __init__(self, formals, eformal, exprs, static_env):
+        self.formals = formals
+        self.eformal = eformal
+        self.exprs = exprs
+        self.static_env = static_env
+    def combine(self, operands, env, cont):
+        eval_env = Environment([self.static_env])
+        match_parameter_tree(self.formals, operands, eval_env)
+        match_parameter_tree(self.eformal, env, eval_env)
+        return sequence(self.exprs, eval_env, cont)
+
 class Primitive(Operative):
     def __init__(self, code):
         self.code = code
@@ -179,11 +191,11 @@ class NotFound(KernelError):
         self.val = val
 
 class Environment(KernelValue):
-    def __init__(self, parents, bindings):
+    def __init__(self, parents, bindings=None):
         self.parents = parents
-        self.bindings = bindings
-    def set(self, name, value):
-        self.bindings[name] = value
+        self.bindings = bindings or {}
+    def set(self, symbol, value):
+        self.bindings[symbol] = value
     def lookup(self, symbol):
         try:
             ret = self.bindings[symbol]

@@ -6,7 +6,7 @@ import kernel_type as kt
 
 def entry_point(argv):
     jit.set_param(None, "trace_limit", 20000)
-    interpret.test()
+    interpret.run(argv)
     return 0
 
 def target(driver, args):

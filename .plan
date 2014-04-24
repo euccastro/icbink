@@ -1,6 +1,7 @@
 Make a basic interpreter:
     Do Guarded continuations pretty early, because that's where I perceive the biggest risk and complication, and it may be traumatic to retrofit later on
         Build everything needed to test this.
+            Actually, build everything needed to start testing things in Kernel itself.
             Start with $vau and $lambda (therefore, wrap/unwrap)
                 The only challenge here is in matching formal parameter trees, which we'll need for define anyway.
         Guarded continuation-based exception handling.

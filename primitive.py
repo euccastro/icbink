@@ -44,6 +44,23 @@ def guard_continuation(vals, env, cont):
 def sequence(exprs, env, cont):
     return kt.sequence(exprs, env, cont)
 
+@export('$vau', simple=False, applicative=False)
+def vau(operands, env, cont):
+    assert isinstance(operands, kt.Pair)
+    formals = operands.car
+    cdr = operands.cdr
+    assert isinstance(cdr, kt.Pair)
+    eformals = cdr.car
+    exprs = cdr.cdr
+    return cont.plug_reduce(kt.CompoundOperative(formals, eformals, exprs, env))
+
+@export('print')
+def dbg(val):
+    assert isinstance(val, kt.Pair)
+    assert val.cdr is kt.nil
+    print val.car.tostring()
+    return kt.inert
+
 def _guard_continuation(vals, env, cont):
     entry_guards, cont_to_guard, exit_guards = kt.pythonify_list(vals)
     check_guards(entry_guards)
@@ -61,3 +78,12 @@ def check_guards(guards):
         assert isinstance(interceptor, kt.Applicative)
         assert isinstance(interceptor.wrapped_combiner, kt.Operative)
 
+def export_type_predicate(name, cls):
+    def pred(vals):
+        for val in kt.iter_list(vals):
+            if not isinstance(val, cls):
+                return kt.false
+        return kt.true
+    exports[kt.get_interned(name+"?")] = kt.Applicative(kt.SimplePrimitive(pred))
+
+export_type_predicate('string', kt.String)

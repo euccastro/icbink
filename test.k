@@ -45,5 +45,22 @@
 
 (print (dneppa-gnirts " mundo " "hola"))
 
-; Missing some primitive to capture current environment.
-;(print (eval (cons string-append (cons "a" (cons "b" ())))))
+(print (not? #t))
+
+(print (($lambda (s) (string-append s "!")) "a"))
+
+(print (list "a" "b" "c"))
+
+(print (map1 ($lambda (x) x) (list "a" "b" "c")))
+
+(print (map1 ($lambda (s) (string-append s "!")) (list "a" "b" "c")))
+
+($let ((m "heh"))
+  (print m))
+
+($let ((a "heheh")
+       ((b c d) (list "bee" "cee" "dee")))
+  (print (list a b c d)))
+
+($let ((env (($vau () env env))))
+  (print (eval (cons string-append (cons "a" (cons "b" ()))) env)))

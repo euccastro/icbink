@@ -52,13 +52,17 @@ def test():
     assert isinstance(keval('string-append', env), kt.Applicative)
     print "All OK."
 
-def run(args):
-    _, filename = args
+def load(filename, env):
     src = open(filename).read()
     program = parse.parse(src)
-    env = standard_environment()
     for expr in program.data:
         run_one_expr(expr, env)
+
+def run(args):
+    env = standard_environment()
+    _, filename = args
+    load("library.k", env)
+    load(filename, env)
     return 0
 
 if __name__ == '__main__':

@@ -189,6 +189,7 @@ for name in ['boolean',
              'ignore',
              'operative',
              'applicative',
+             'combiner',
              'string']:
     cls = getattr(kt, name.capitalize())
     exports[kt.get_interned(name+"?")] = make_pred(cls)

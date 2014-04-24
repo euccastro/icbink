@@ -311,6 +311,23 @@ class IfCont(Continuation):
         else:
             assert False
 
+class CondCont(Continuation):
+    def __init__(self, clauses, env, prev):
+        Continuation.__init__(self, prev)
+        self.clauses = clauses
+        self.env = env
+        self.prev = prev
+    def plug_reduce(self, val):
+        if val is true:
+            return sequence(cdar(self.clauses), self.env, self.prev)
+        else:
+            return cond(cdr(self.clauses), self.env, self.prev)
+
+def cond(vals, env, cont):
+    if vals is nil:
+        return cont.plug_reduce(inert)
+    return caar(vals), env, CondCont(vals, env, cont)
+
 class DefineCont(Continuation):
     def __init__(self, definiend, env, prev):
         Continuation.__init__(self, prev)

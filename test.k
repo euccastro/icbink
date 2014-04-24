@@ -36,6 +36,13 @@
     (print b)
     (string-append b a)))
 
+(print (string? "x"))
+(print ($cond ((boolean? "x") "1")
+              ((string? "x") "success")
+              (#f "wut")
+              (#t "shouldn't reach here")
+              (#f "wat")))
+
 (print (dneppa-gnirts " mundo " "hola"))
 
 ; Missing some primitive to capture current environment.

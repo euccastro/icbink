@@ -143,9 +143,9 @@ def apply_(vals, env_ignore, cont):
     assert isinstance(applicative, kt.Applicative)
     return kt.Pair(applicative.wrapped_combiner, args), env, cont
 
-#@export('$cond')
-#def cond(vals, env, cont):
-#    return kt.cond(vals, env, cont)
+@export('$cond')
+def cond(vals, env, cont):
+    return kt.cond(vals, env, cont)
 
 # Not a standard Kernel function; for debugging only.
 @export('print')

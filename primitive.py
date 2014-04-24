@@ -54,6 +54,41 @@ def vau(operands, env, cont):
     exprs = cdr.cdr
     return cont.plug_reduce(kt.CompoundOperative(formals, eformals, exprs, env))
 
+@export('$if', simple=False, applicative=False)
+def if_(operands, env, cont):
+    test, consequent, alternative = kt.pythonify_list(operands)
+    return test, env, kt.IfCont(consequent, alternative, env, cont)
+
+@export('equal?')
+def equalp(vals):
+    o1, o2 = kt.pythonify_list(vals)
+    return kt.true if o1.equal(o2) else kt.false
+
+@export('cons')
+def cons(vals):
+    car, cdr = kt.pythonify_list(vals)
+    return kt.Pair(car, cdr)
+
+@export('eval', simple=False)
+def eval_(vals, env_ignore, cont):
+    expr, env = kt.pythonify_list(vals)
+    return expr, env, cont
+
+@export('make-environment')
+def make_environment(vals):
+    return kt.Environment(kt.pythonify_list(vals))
+
+@export('$define!', simple=False, applicative=False)
+def define(vals, env, cont):
+    definiend, expression = kt.pythonify_list(vals)
+    return expression, env, kt.DefineCont(definiend, env, cont)
+
+@export('wrap')
+def wrap(vals):
+    combiner, = kt.pythonify_list(vals)
+    return kt.Applicative(combiner)
+
+# Not a standard Kernel function; for debugging only.
 @export('print')
 def dbg(val):
     assert isinstance(val, kt.Pair)
@@ -78,12 +113,24 @@ def check_guards(guards):
         assert isinstance(interceptor, kt.Applicative)
         assert isinstance(interceptor.wrapped_combiner, kt.Operative)
 
-def export_type_predicate(name, cls):
+def make_pred(cls):
     def pred(vals):
         for val in kt.iter_list(vals):
             if not isinstance(val, cls):
                 return kt.false
         return kt.true
-    exports[kt.get_interned(name+"?")] = kt.Applicative(kt.SimplePrimitive(pred))
+    return kt.Applicative(kt.SimplePrimitive(pred))
 
-export_type_predicate('string', kt.String)
+for name in ['boolean',
+             'symbol',
+             'inert',
+             'pair',
+             'null',
+             'environment',
+             'ignore',
+             'operative',
+             'applicative',
+             'string']:
+    cls = getattr(kt, name.capitalize())
+    exports[kt.get_interned(name+"?")] = make_pred(cls)
+

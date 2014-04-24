@@ -12,9 +12,6 @@ class KernelValue(object):
     simple = True
     def equal(self, other):
         return other is self
-    @jit.elidable
-    def eq(self, other):
-        return other is self
     def tostring(self):
         return str(self)
     def interpret(self, env, cont):
@@ -34,6 +31,8 @@ class String(KernelValue):
     @jit.elidable
     def tostring(self):
         return '"%s"' % self.value
+    def equal(self, other):
+        return isinstance(other, String) and other.value == self.value
 
 #XXX: Unicode
 class Symbol(KernelValue):
@@ -60,12 +59,12 @@ def get_interned(name):
         ret = _symbol_table[name] = Symbol(name)
         return ret
 
-class Nil(KernelValue):
+class Null(KernelValue):
     @jit.elidable
     def tostring(self):
         return "()"
 
-nil = Nil()
+nil = Null()
 
 class Ignore(KernelValue):
     @jit.elidable
@@ -106,6 +105,10 @@ class Pair(KernelValue):
         return "(%s . %s)" % (self.car.tostring(), self.cdr.tostring())
     def interpret(self, env, cont):
         return self.car, env, CombineCont(self.cdr, env, cont)
+    def equal(self, other):
+        return (isinstance(other, Pair)
+                and self.car.equal(other.car)
+                and self.cdr.equal(other.cdr))
 
 class Combiner(KernelValue):
     pass
@@ -173,6 +176,7 @@ def select_interceptors(cont, cls):
 class Applicative(Combiner):
     def __init__(self, combiner):
         #XXX: rename to wrapped_combiner
+        assert isinstance(combiner, Combiner)
         self.wrapped_combiner = combiner
     def combine(self, operands, env, cont):
         return evaluate_arguments(operands,
@@ -283,6 +287,29 @@ class SequenceCont(Continuation):
         self.env = env
     def plug_reduce(self, val):
         return sequence(self.exprs, self.env, self.prev)
+
+class IfCont(Continuation):
+    def __init__(self, consequent, alternative, env, prev):
+        Continuation.__init__(self, prev)
+        self.consequent = consequent
+        self.alternative = alternative
+        self.env = env
+    def plug_reduce(self, val):
+        if val is true:
+            return self.consequent, self.env, self.prev
+        elif val is false:
+            return self.alternative, self.env, self.prev
+        else:
+            assert False
+
+class DefineCont(Continuation):
+    def __init__(self, definiend, env, prev):
+        Continuation.__init__(self, prev)
+        self.definiend = definiend
+        self.env = env
+    def plug_reduce(self, val):
+        match_parameter_tree(self.definiend, val, self.env)
+        return self.prev.plug_reduce(inert)
 
 def sequence(exprs, env, cont):
     assert isinstance(exprs, Pair)

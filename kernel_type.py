@@ -1,6 +1,7 @@
 from itertools import product
 
 from rpython.rlib import jit
+from rpython.rlib import rstring
 
 
 class KernelError(Exception):
@@ -104,7 +105,21 @@ class Pair(KernelValue):
         self.car = car
         self.cdr = cdr
     def tostring(self):
-        return "(%s . %s)" % (self.car.tostring(), self.cdr.tostring())
+        s = rstring.StringBuilder()
+        s.append("(")
+        pair = self
+        while True:
+            s.append(pair.car.tostring())
+            if isinstance(pair.cdr, Pair):
+                pair = pair.cdr
+                s.append(" ")
+            else:
+                if pair.cdr is not nil:
+                    s.append(" . ")
+                    s.append(pair.cdr.tostring())
+                break
+        s.append(")")
+        return s.build()
     def interpret(self, env, cont):
         return self.car, env, CombineCont(self.cdr, env, cont)
     def equal(self, other):

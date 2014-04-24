@@ -8,6 +8,7 @@
 (print (equal? "heh" "non-heh"))
 (print (cons "a" "b"))
 (print (cons "a" (cons "b" ())))
+(print (cons "a" (cons "b" "c")))
 (print (cons "a" (cons (cons "b" "c") ())))
 ($define! x "huh")
 (print x)
@@ -50,6 +51,8 @@
 (print (($lambda (s) (string-append s "!")) "a"))
 
 (print (list "a" "b" "c"))
+(print (list* "a" "b" "c"))
+(print (list* "a" "b" (list "c" "d")))
 
 (print (map1 ($lambda (x) x) (list "a" "b" "c")))
 

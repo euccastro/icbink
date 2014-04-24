@@ -29,4 +29,14 @@
 ($define! x (list "a" "b" "c" "d" "e"))
 (print (cdddr x))
 
+
+($define! dneppa-gnirts
+  ($lambda (a b)
+    (print a)
+    (print b)
+    (string-append b a)))
+
+(print (dneppa-gnirts " mundo " "hola"))
+
+; Missing some primitive to capture current environment.
 ;(print (eval (cons string-append (cons "a" (cons "b" ())))))

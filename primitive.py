@@ -113,7 +113,9 @@ def list_star(vals):
 
 @export('$lambda')
 def lambda_(vals, env, cont):
-    formals, exprs = kt.pythonify_list(vals)
+    assert isinstance(vals, kt.Pair)
+    formals = vals.car
+    exprs = vals.cdr
     return cont.plug_reduce(
             kt.Applicative(
                 kt.CompoundOperative(formals, kt.ignore, exprs, env)))

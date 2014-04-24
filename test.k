@@ -26,4 +26,7 @@
 (print d)
 (print e)
 
+($define! x (list "a" "b" "c" "d" "e"))
+(print (cdddr x))
+
 ;(print (eval (cons string-append (cons "a" (cons "b" ())))))

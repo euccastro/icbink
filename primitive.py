@@ -1,3 +1,5 @@
+from itertools import product
+
 from rpython.rlib import rstring
 
 import kernel_type as kt
@@ -5,13 +7,16 @@ import kernel_type as kt
 
 exports = {}
 
-def export(name, simple=True, applicative=True):
+def export(name, simple=True):
+    operative = name.startswith("$")
+    if operative:
+        simple = False
     def wrapper(fn):
         if simple:
             comb = kt.SimplePrimitive(fn)
         else:
             comb = kt.Primitive(fn)
-        if applicative:
+        if not operative:
             comb = kt.Applicative(comb)
         exports[kt.get_interned(name)] = comb
         return fn
@@ -31,7 +36,7 @@ def continuation2applicative(vals):
     assert isinstance(cont, kt.Continuation)
     return kt.ContWrapper(cont)
 
-@export('guard-continuation', simple=False, applicative=False)
+@export('guard-continuation', simple=False)
 def guard_continuation(vals, env, cont):
     return kt.evaluate_arguments(
             vals,
@@ -40,11 +45,11 @@ def guard_continuation(vals, env, cont):
                          env,
                          cont))
 
-@export('$sequence', simple=False, applicative=False)
+@export('$sequence')
 def sequence(exprs, env, cont):
     return kt.sequence(exprs, env, cont)
 
-@export('$vau', simple=False, applicative=False)
+@export('$vau')
 def vau(operands, env, cont):
     assert isinstance(operands, kt.Pair)
     formals = operands.car
@@ -54,7 +59,7 @@ def vau(operands, env, cont):
     exprs = cdr.cdr
     return cont.plug_reduce(kt.CompoundOperative(formals, eformals, exprs, env))
 
-@export('$if', simple=False, applicative=False)
+@export('$if')
 def if_(operands, env, cont):
     test, consequent, alternative = kt.pythonify_list(operands)
     return test, env, kt.IfCont(consequent, alternative, env, cont)
@@ -78,7 +83,7 @@ def eval_(vals, env_ignore, cont):
 def make_environment(vals):
     return kt.Environment(kt.pythonify_list(vals))
 
-@export('$define!', simple=False, applicative=False)
+@export('$define!')
 def define(vals, env, cont):
     definiend, expression = kt.pythonify_list(vals)
     return expression, env, kt.DefineCont(definiend, env, cont)
@@ -87,6 +92,58 @@ def define(vals, env, cont):
 def wrap(vals):
     combiner, = kt.pythonify_list(vals)
     return kt.Applicative(combiner)
+
+@export('unwrap')
+def unwrap(vals):
+    applicative, = kt.pythonify_list(vals)
+    assert isinstance(applicative, kt.Applicative)
+    return applicative.wrapped_combiner
+
+@export('list')
+def list_(vals):
+    return vals
+
+@export('list*')
+def list_star(vals):
+    assert isinstance(vals, kt.Pair)
+    if isinstance(vals.cdr, kt.Pair):
+        return kt.Pair(vals.car, list_star(vals.cdr))
+    else:
+        return vals
+
+@export('$lambda')
+def lambda_(vals, env, cont):
+    formals, exprs = kt.pythonify_list(vals)
+    return cont.plug_reduce(
+            kt.Applicative(
+                kt.CompoundOperative(formals, kt.ignore, exprs, env)))
+
+# car, cdr, caar, cadr, ..., caadr, ..., cdddddr.
+for length in range(1, 6):
+    for absoup in product('ad', repeat=length):
+        name = 'c%sr' % ''.join(absoup)
+        exec("""
+@export('%s')
+def %s(val):
+    assert isinstance(val, kt.Pair)
+    assert val.cdr is kt.nil
+    return kt.%s(val.car)
+""" % (name, name, name))
+
+@export('apply', simple=False)
+def apply_(vals, env_ignore, cont):
+    ls = kt.pythonify_list(vals)
+    if len(ls) == 2:
+        applicative, args = ls
+        env = kt.Environment([])
+    else:
+        applicative, args, env = ls
+    assert isinstance(applicative, kt.Applicative)
+    return kt.Pair(applicative.wrapped_combiner, args), env, cont
+
+#@export('$cond')
+#def cond(vals, env, cont):
+#    return kt.cond(vals, env, cont)
 
 # Not a standard Kernel function; for debugging only.
 @export('print')

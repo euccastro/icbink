@@ -1,3 +1,5 @@
+from itertools import product
+
 from rpython.rlib import jit
 
 
@@ -288,6 +290,13 @@ class SequenceCont(Continuation):
     def plug_reduce(self, val):
         return sequence(self.exprs, self.env, self.prev)
 
+def sequence(exprs, env, cont):
+    assert isinstance(exprs, Pair)
+    if exprs.cdr is nil:
+        return exprs.car, env, cont
+    else:
+        return exprs.car, env, SequenceCont(exprs.cdr, env, cont)
+
 class IfCont(Continuation):
     def __init__(self, consequent, alternative, env, prev):
         Continuation.__init__(self, prev)
@@ -310,13 +319,6 @@ class DefineCont(Continuation):
     def plug_reduce(self, val):
         match_parameter_tree(self.definiend, val, self.env)
         return self.prev.plug_reduce(inert)
-
-def sequence(exprs, env, cont):
-    assert isinstance(exprs, Pair)
-    if exprs.cdr is nil:
-        return exprs.car, env, cont
-    else:
-        return exprs.car, env, SequenceCont(exprs.cdr, env, cont)
 
 def match_parameter_tree(param_tree, operand_tree, env):
     if isinstance(param_tree, Symbol):
@@ -352,6 +354,21 @@ class InterceptCont(Continuation):
         return self.interceptor.combine(Pair(val, ContWrapper(outer_cont)),
                                         outer_cont.env,
                                         self.next_cont)
+
+def car(val):
+    assert isinstance(val, Pair)
+    return val.car
+def cdr(val):
+    assert isinstance(val, Pair)
+    return val.cdr
+
+# caar, cadr, ..., caadr, ..., cdddddr.
+for length in range(2, 6):
+    for absoup in product('ad', repeat=length):
+        exec("def c%sr(val): return %sval%s"
+             % (''.join(absoup),
+                ''.join('c%sr(' % each for each in absoup),
+                ''.join(')' for each in absoup)))
 
 def iter_list(vals):
     while isinstance(vals, Pair):

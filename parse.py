@@ -16,6 +16,8 @@ grammar = r"""
     BOOLEAN: "#t|#f";
     IDENTIFIER: "\+|\-|[a-zA-Z!$%&\*/:<=>\?@\^_~][a-zA-Z0-9!$%&\*\+\-/:<=>\?@\^_~]*";
     STRING: "\"([^\"]|\\\")*\"";
+    IGNORE_VAL: "#ignore";
+    INERT: "#inert";
     IGNORE: " |\n|;[^\n]*\n";
     sequence: expr >sequence< | expr;
     expr: <list> | <dotted_list> | <atom>;
@@ -35,6 +37,10 @@ class Visitor(RPythonVisitor):
     def visit_STRING(self, node):
         # Remove quotation marks.
         return kt.String(node.token.source[:-1][1:])
+    def visit_IGNORE_VAL(self, node):
+        return kt.ignore
+    def visit_INERT_VAL(self, node):
+        return kt.inert
     def visit_list(self, node):
         return build_pair_chain([self.dispatch(c) for c in node.children]
                                 + [kt.nil])

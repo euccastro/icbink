@@ -33,7 +33,7 @@ driver = jit.JitDriver(reds=['env', 'cont'],
 
 
 def keval(expr_str, env):
-    expr, = parse.parse(expr_str).exprs
+    expr, = parse.parse(expr_str).data
     return run_one_expr(expr, env)
 
 def test():

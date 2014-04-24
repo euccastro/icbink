@@ -67,6 +67,20 @@ class Nil(KernelValue):
 
 nil = Nil()
 
+class Ignore(KernelValue):
+    @jit.elidable
+    def tostring(self):
+        return '#ignore'
+
+ignore = Ignore()
+
+class Inert(KernelValue):
+    @jit.elidable
+    def tostring(self):
+        return '#inert'
+
+inert = Inert()
+
 class Boolean(KernelValue):
     _immutable_fields_ = ['value']
     def __init__(self, value):
@@ -156,9 +170,9 @@ class Applicative(Combiner):
 class Program(KernelValue):
     """Not a real Kernel value; just to keep RPython happy."""
     def __init__(self, exprs):
-        self.exprs = exprs
+        self.data = exprs
     def tostring(self):
-        return str([expr.tostring() for expr in self.exprs])
+        return str([expr.tostring() for expr in self.data])
 
 class NotFound(KernelError):
     def __init__(self, val):
@@ -207,17 +221,17 @@ class TerminalCont(Continuation):
 
 def evaluate_arguments(vals, env, cont):
     if isinstance(vals, Pair):
-        return vals.car, env, EvalArgsCont(vals, env, cont)
+        return vals.car, env, EvalArgsCont(vals.cdr, env, cont)
     else:
         return cont.plug_reduce(nil)
 
 class EvalArgsCont(Continuation):
-    def __init__(self, vals, env, prev):
+    def __init__(self, exprs, env, prev):
         Continuation.__init__(self, prev)
-        self.vals = vals
+        self.exprs = exprs
         self.env = env
     def plug_reduce(self, val):
-        return evaluate_arguments(self.vals.cdr,
+        return evaluate_arguments(self.exprs,
                                   self.env,
                                   GatherArgsCont(val, self.prev))
 
@@ -249,6 +263,33 @@ class GuardCont(Continuation):
         Continuation.__init__(self, prev)
         self.guards = guards
         self.env = env
+
+class SequenceCont(Continuation):
+    def __init__(self, exprs, env, prev):
+        Continuation.__init__(self, prev)
+        self.exprs = exprs
+        self.env = env
+    def plug_reduce(self, val):
+        return sequence(self.exprs, self.env, self.prev)
+
+def sequence(exprs, env, cont):
+    assert isinstance(exprs, Pair)
+    if exprs.cdr is nil:
+        return exprs.car, env, cont
+    else:
+        return exprs.car, env, SequenceCont(exprs.cdr, env, cont)
+
+def match_parameter_tree(param_tree, operand_tree, env):
+    if isinstance(param_tree, Symbol):
+        env.set(param_tree, operand_tree)
+    elif param_tree is ignore:
+        pass
+    elif param_tree is nil:
+        assert operand_tree is nil
+    elif isinstance(param_tree, Pair):
+        assert isinstance(operand_tree, Pair)
+        match_parameter_tree(param_tree.car, operand_tree.car, env)
+        match_parameter_tree(param_tree.cdr, operand_tree.cdr, env)
 
 class InnerGuardCont(GuardCont):
     pass

@@ -40,6 +40,10 @@ def guard_continuation(vals, env, cont):
                          env,
                          cont))
 
+@export('$sequence', simple=False, applicative=False)
+def sequence(exprs, env, cont):
+    return kt.sequence(exprs, env, cont)
+
 def _guard_continuation(vals, env, cont):
     entry_guards, cont_to_guard, exit_guards = kt.pythonify_list(vals)
     check_guards(entry_guards)

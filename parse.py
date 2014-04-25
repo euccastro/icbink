@@ -62,10 +62,10 @@ parse_ebnf = make_parse_function(regexs, rules, eof=True)
 def parse(s):
     return Visitor().dispatch(ToAST().transform(parse_ebnf(s)))
 
-def test():
+def test(s):
     try:
-        ast = parse('($one #t (#f () . ("5"))) "2"; This is a comment.\n"2.5" ( "3" "3.5" . "rest" ) \n"4.6" ("1") ("3" . ()) ("4" ()) ')
-        #ast.view()
+        ast = parse_ebnf(s)
+        ast.view()
         transformed = ToAST().transform(ast)
         #transformed.view()
         program = Visitor().dispatch(transformed)
@@ -75,4 +75,7 @@ def test():
     pdb.set_trace()
 
 if __name__ == '__main__':
-    test()
+    import sys
+    src = file(sys.argv[1]).read()
+    print src
+    test(src)

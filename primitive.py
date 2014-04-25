@@ -108,6 +108,8 @@ def list_star(vals):
     assert isinstance(vals, kt.Pair)
     if isinstance(vals.cdr, kt.Pair):
         return kt.Pair(vals.car, list_star(vals.cdr))
+    elif vals.cdr is kt.nil:
+        return vals.car
     else:
         return vals
 

@@ -14,7 +14,7 @@
 ($define! $let
   ($vau (bindings . body) env
     (eval (cons (list* $lambda (map1 car bindings) body)
-                (map1 cdr bindings))
+                (map1 cadr bindings))
           env)))
 
 ($define! not?

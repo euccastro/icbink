@@ -14,16 +14,16 @@ import kernel_type as kt
 # later.
 grammar = r"""
     BOOLEAN: "#t|#f";
+    INERT: "#inert";
+    IGNORE_VAL: "#ignore";
     IDENTIFIER: "\+|\-|[a-zA-Z!$%&\*/:<=>\?@\^_~][a-zA-Z0-9!$%&\*\+\-/:<=>\?@\^_~]*";
     STRING: "\"([^\"]|\\\")*\"";
-    IGNORE_VAL: "#ignore";
-    INERT: "#inert";
     IGNORE: " |\n|;[^\n]*\n";
     sequence: expr >sequence< | expr;
     expr: <list> | <dotted_list> | <atom>;
     list: ["("] >sequence< [")"];
     dotted_list: ["("] >sequence< ["."] expr [")"];
-    atom: <BOOLEAN> | <STRING> | <IDENTIFIER> | <nil>;
+    atom: <BOOLEAN> | <INERT> | <IGNORE_VAL> | <STRING> | <IDENTIFIER> | <nil>;
     nil: ["("] [")"];
     """
 
@@ -39,7 +39,7 @@ class Visitor(RPythonVisitor):
         return kt.String(node.token.source[:-1][1:])
     def visit_IGNORE_VAL(self, node):
         return kt.ignore
-    def visit_INERT_VAL(self, node):
+    def visit_INERT(self, node):
         return kt.inert
     def visit_list(self, node):
         return build_pair_chain([self.dispatch(c) for c in node.children]

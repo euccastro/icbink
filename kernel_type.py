@@ -109,6 +109,7 @@ class Pair(KernelValue):
         s.append("(")
         pair = self
         while True:
+            assert isinstance(pair, Pair)
             s.append(pair.car.tostring())
             if isinstance(pair.cdr, Pair):
                 pair = pair.cdr

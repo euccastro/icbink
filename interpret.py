@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from rpython.rlib import jit
 
 import kernel_type as kt

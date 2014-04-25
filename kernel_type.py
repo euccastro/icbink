@@ -17,6 +17,8 @@ class KernelValue(object):
         return other is self
     def tostring(self):
         return str(self)
+    def todisplay(self):
+        return self.tostring()
     def interpret(self, env, cont):
         assert self.simple
         return cont.plug_reduce(self.interpret_simple(env))
@@ -34,6 +36,8 @@ class String(KernelValue):
     @jit.elidable
     def tostring(self):
         return '"%s"' % self.value
+    def todisplay(self):
+        return self.value
     def equal(self, other):
         return isinstance(other, String) and other.value == self.value
 

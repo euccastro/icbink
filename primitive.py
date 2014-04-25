@@ -152,10 +152,16 @@ def cond(vals, env, cont):
 # Not standard Kernel functions; for debugging only.
 
 @export('print')
-def dbg(val):
+def print_(val):
     assert isinstance(val, kt.Pair)
-    assert val.cdr is kt.nil
-    print val.car.tostring()
+    for v in kt.iter_list(val):
+        print val.car.todisplay(),
+    return kt.inert
+
+@export('println')
+def println(val):
+    print_(val)
+    print
     return kt.inert
 
 class TestError(Exception):

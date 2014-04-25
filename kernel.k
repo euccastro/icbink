@@ -38,7 +38,7 @@
           ((null? (cdr x)) (eval (car x) e))
           ((eval (car x) e) (apply (wrap $and?) (cdr x) e))
           (#t #f))))
-     
+
 ($define! $or?
   ($vau x e
     (cond ((null? x) #f)
@@ -62,3 +62,7 @@
   (wrap ($vau x env
           (apply map1 x env)
           #inert)))
+
+($define! apply-continuation
+  ($lambda (c o)
+    (apply (continuation->applicative c) o)))

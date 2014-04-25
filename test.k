@@ -52,7 +52,8 @@
 ($test "trace initial state" () (get-trace))
 ($test "trace something" ("a") (trace "a") (get-trace))
 ($test "reset trace" () (reset-trace!) (get-trace))
-($test "trace order" ("a" "b") (reset-trace!) (trace "a") (trace "b") (get-trace))
+($test "trace order" ("a" "b")
+  (reset-trace!) (trace "a") (trace "b") (get-trace))
 ($test "$trace-and-result" (("a" "b") "c") ($trace-and-result ((trace "a") (trace "b") "c")))
 ($t/t "$t/t" ("a" "b") "c" (trace "a") (trace "b") "c")
 
@@ -73,6 +74,25 @@
     (list a b c d)))
 
 ($test "list, cdddr" ("d" "e") (cdddr (list "a" "b" "c" "d" "e")))
+
+($test "call/cc result" "x"
+  (call/cc
+    ($lambda (k)
+      (trace "a")
+      (apply (continuation->applicative k) "x")
+      (trace "b")
+      "y")))
+
+($t/t "call/cc trace" ("a") "xyz"
+  (string-append
+    "x"
+    (call/cc
+      ($lambda (k)
+        (trace "a")
+        (apply-continuation k "y")
+        (trace "b")
+        "w"))
+    "z"))
 
 (println)
 (println "All OK.")

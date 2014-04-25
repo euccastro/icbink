@@ -34,7 +34,7 @@ def string_append(vals):
 def continuation2applicative(vals):
     cont, = kt.pythonify_list(vals)
     assert isinstance(cont, kt.Continuation)
-    return kt.ContWrapper(cont)
+    return kt.Applicative(kt.ContWrapper(cont))
 
 @export('guard-continuation', simple=False)
 def guard_continuation(vals, env, cont):
@@ -148,6 +148,13 @@ def apply_(vals, env_ignore, cont):
 @export('$cond')
 def cond(vals, env, cont):
     return kt.cond(vals, env, cont)
+
+@export('call/cc', simple=False)
+def call_with_cc(vals, env, cont):
+    applicative, = kt.pythonify_list(vals)
+    assert isinstance(applicative, kt.Applicative)
+    return kt.Pair(applicative, kt.Pair(cont, kt.nil)), env, cont
+
 
 # Not standard Kernel functions; for debugging only.
 

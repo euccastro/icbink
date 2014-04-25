@@ -4,8 +4,9 @@
     ($let ((result (eval (cons $sequence body) env)))
       ($if (equal? result expected)
         #inert
-        (test-error name "; expected:" expected
-                         ", actual:" result)))))
+        (test-error name
+                    "; expected:" expected
+                    ", actual:" result)))))
 
 ; XXX: use a keyed variable when we have those.
 ($define! current-trace ())
@@ -34,16 +35,16 @@
     ($let (((trace result) ((wrap $trace-and-result) body env)))
       ($define! error ())
       ($unless (equal? trace expected-trace)
-         ($define! error (list* "wrong trace! expected:" expected-trace 
-                                "but got:" trace 
-                                error)))
+        ($define! error (list* "wrong trace! expected:" expected-trace
+                               "but got:" trace
+                               error)))
       ($unless (equal? result expected-result)
-         ($define! error (list* "wrong result! expected:" expected-result
-                                "but got:" result
-                                error)))
+        ($define! error (list* "wrong result! expected:" expected-result
+                               "but got:" result
+                               error)))
       ($unless (null? error)
         (apply test-error (list* name error))))))
-        
+
 ; Tests BEGIN
 
 ; Let's begin by testing trace itself.
@@ -57,13 +58,13 @@
 
 ; Kernel semantics proper.
 
-($test "param tree matching" ("a" "b" "c" "d" ("e" "f")) 
+($test "param tree matching" ("a" "b" "c" "d" ("e" "f"))
   ($define! (a (b c) d . e)
     (cons "a"
-      (cons
-        (cons "b" (cons "c" ()))
-        (cons "d"
-          (cons "e" (cons "f" ()))))))
+          (cons
+            (cons "b" (cons "c" ()))
+            (cons "d"
+                  (cons "e" (cons "f" ()))))))
   (list a b c d e))
 
 ($test "param tree matching in $let" ("a" "b" "c" "d")

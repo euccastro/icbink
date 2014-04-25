@@ -149,12 +149,24 @@ def apply_(vals, env_ignore, cont):
 def cond(vals, env, cont):
     return kt.cond(vals, env, cont)
 
-# Not a standard Kernel function; for debugging only.
+# Not standard Kernel functions; for debugging only.
+
 @export('print')
 def dbg(val):
     assert isinstance(val, kt.Pair)
     assert val.cdr is kt.nil
     print val.car.tostring()
+    return kt.inert
+
+class TestError(Exception):
+    def __init__(self, val):
+        assert isinstance(val, kt.KernelValue)
+        self.val = val
+
+@export('test-error')
+def test_error(val):
+    print "ERROR: " + val.tostring()
+    raise TestError(val)
     return kt.inert
 
 def _guard_continuation(vals, env, cont):

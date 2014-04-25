@@ -1,3 +1,32 @@
+(print "He llo!")
+
+#inert
+
+(print "hello")
+
+(print #inert)
+
+($define! $tst
+  ($vau (expr expected) env
+    ($let ((actual (eval expr env)))
+      ($if (equal? expected actual)
+        #inert
+        "false"))))
+
+(print "$app defined")
+
+($define! par
+  ($lambda (x)
+    (print x)
+    x))
+
+(print "par defined")
+
+(print ($tst (par "heh") "heh"))
+
+
+(print (($vau (x) env (eval x env)) (string-append "hey!" "hou!")))
+(print (($vau (x) env x) (string-append "hey!" "hou")))
 (print (boolean? (string? (string-append "Hellow" " world!"))))
 (print (boolean?))
 (print (boolean? #t #f))
@@ -67,3 +96,17 @@
 
 ($let ((env (($vau () env env))))
   (print (eval (cons string-append (cons "a" (cons "b" ()))) env)))
+
+(print "Testing...")
+
+($define! $test
+  ($vau (expr expected) env
+    ($let ((result (eval expr env)))
+      ($if (equal? result expected)
+        #inert
+        (test-error (list (list "expected" expected)
+                          (list "actual" result)))))))
+(print "Defined test")
+
+($test (string-append "a" "b") "ac")
+(print "All OK.")

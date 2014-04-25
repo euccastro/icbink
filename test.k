@@ -1,30 +1,3 @@
-(println "He llo!")
-
-#inert
-
-(println "hello")
-
-(println #inert)
-
-($define! $tst
-  ($vau (expr expected) env
-    ($let ((actual (eval expr env)))
-      ($if (equal? expected actual)
-        #inert
-        "false"))))
-
-(println "$app defined")
-
-($define! par
-  ($lambda (x)
-    (println x)
-    x))
-
-(println "par defined")
-
-(println ($tst (par "heh") "heh"))
-
-
 (println (($vau (x) env (eval x env)) (string-append "hey!" "hou!")))
 (println (($vau (x) env x) (string-append "hey!" "hou")))
 (println (boolean? (string? (string-append "Hellow" " world!"))))
@@ -55,6 +28,8 @@
 (println c)
 (println d)
 (println e)
+
+(($vau () env (println "um") (println "outro")))
 
 ($define! x (list "a" "b" "c" "d" "e"))
 (println (cdddr x))
@@ -100,12 +75,61 @@
 (println "Testing...")
 
 ($define! $test
-  ($vau (name expr expected) env
-    ($let ((result (eval expr env)))
+  ($vau (name expected . body) env
+    (println "Testing" name "...")
+    ($let ((result (eval (cons $sequence body) env)))
       ($if (equal? result expected)
         #inert
-        (test-error (list name
-                          (list "expected" expected)
-                          (list "actual" result)))))))
+        (test-error name "; expected:" expected
+                         ", actual:" result)))))
 
+; XXX: use a keyed variable when we have those.
+($define! current-trace ())
+
+($define! test-env (get-current-environment))
+
+($define! get-trace
+  ($lambda () (reverse current-trace)))
+
+($define! reset-trace!
+  ($lambda () ($set! test-env current-trace ())))
+
+($define! trace
+  ($lambda (x) ($set! test-env current-trace (cons x current-trace))))
+
+($define! $trace-and-result
+  ($vau (body . envoper) env
+    (reset-trace!)
+    ($let ((result (eval (cons $sequence body) ($if (null? envoper) env (car envoper)))))
+      (list (get-trace) result))))
+
+; Test with trace.
+($define! $t/t
+  ($vau (name expected-trace expected-result . body) env
+    (println "Testing" name "...")
+    ($let (((trace result) ((wrap $trace-and-result) body env)))
+      ($define! error ())
+      ($unless (equal? trace expected-trace)
+         ($define! error (list* "wrong trace! expected:" expected-trace 
+                                "but got:" trace 
+                                error)))
+      ($unless (equal? result expected-result)
+         ($define! error (list* "wrong result! expected:" expected-result
+                                "but got:" result
+                                error)))
+      ($unless (null? error)
+        (apply test-error (list* name error))))))
+        
+; Tests BEGIN
+
+; Let's begin by testing trace itself.
+
+($test "trace initial state" () (get-trace))
+($test "trace something" ("a") (trace "a") (get-trace))
+($test "reset trace" () (reset-trace!) (get-trace))
+($test "trace order" ("a" "b") (reset-trace!) (trace "a") (trace "b") (get-trace))
+($test "$trace-and-result" (("a" "b") "c") ($trace-and-result ((trace "a") (trace "b") "c")))
+($t/t "$t/t" ("a" "b") "c" (trace "a") (trace "b") "c")
+
+(println)
 (println "All OK.")

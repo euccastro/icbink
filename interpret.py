@@ -63,7 +63,8 @@ def load(filename, env):
 def run(args):
     env = standard_environment()
     _, filename = args
-    load("library.k", env)
+    load("kernel.k", env)
+    load("extension.k", env)
     load(filename, env)
     return 0
 

@@ -213,8 +213,12 @@ class Program(KernelValue):
         return str([expr.tostring() for expr in self.data])
 
 class NotFound(KernelError):
+    _immutable_vars_ = ['val']
     def __init__(self, val):
+        assert isinstance(val, Symbol)
         self.val = val
+    def __str__(self):
+        return "Symbol not found: %s" % self.val.value
 
 class Environment(KernelValue):
     def __init__(self, parents, bindings=None):

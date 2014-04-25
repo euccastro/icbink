@@ -45,3 +45,20 @@
           ((null? (cdr x)) (eval (car x) e))
           ((eval (car x) e) #t)
           (#t (apply (wrap $or?) (cdr x) e)))))
+
+($define! get-current-environment
+  ($vau () e e))
+
+($define! make-kernel-standard-environment
+  ($lambda () (get-current-environment)))
+
+($define! $set!
+  ($vau (exp1 formals exp2) env
+    (eval (list $define! formals
+             (list (unwrap eval) exp2 env))
+      (eval exp1 env))))
+
+($define! for-each
+  (wrap ($vau x env
+          (apply map1 x env)
+          #inert)))

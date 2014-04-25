@@ -153,9 +153,11 @@ def cond(vals, env, cont):
 
 @export('print')
 def print_(val):
-    assert isinstance(val, kt.Pair)
-    for v in kt.iter_list(val):
-        print val.car.todisplay(),
+    if isinstance(val, kt.Pair):
+        for v in kt.iter_list(val):
+            print v.todisplay(),
+    else:
+        assert val is kt.nil
     return kt.inert
 
 @export('println')
@@ -171,7 +173,8 @@ class TestError(Exception):
 
 @export('test-error')
 def test_error(val):
-    print "ERROR: " + val.tostring()
+    print "ERROR: ",
+    println(val)
     raise TestError(val)
     return kt.inert
 

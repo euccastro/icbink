@@ -268,7 +268,7 @@ def evaluate_arguments(vals, env, cont):
     if isinstance(vals, Pair):
         return vals.car, env, EvalArgsCont(vals.cdr, env, cont)
     else:
-        return cont.plug_reduce(nil)
+        return vals, env, cont
 
 class EvalArgsCont(Continuation):
     def __init__(self, exprs, env, prev):

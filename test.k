@@ -168,5 +168,10 @@
        (apply-continuation in-cont "apply-cont-val"))))
     " outer"))
 
+; I don't think this is Kernel semantics (e.g. read, in 4.10.5, "an applicative
+; must have a list of operands", but is this cool or what?
+($test "combine with improper operands" "ha!" (($lambda x x) . "ha!"))
+($test "combine with improper list" ("a" . "b") (($lambda x x) "a" . "b"))
+($test "combine: final cdr of improper list matches 'rest' formal" ("a" "b") (($lambda (x . y) (list x y)) "a" . "b"))
 (println)
 (println "All OK.")

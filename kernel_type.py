@@ -135,7 +135,8 @@ class Pair(KernelValue):
                 and self.cdr.equal(other.cdr))
 
 class Combiner(KernelValue):
-    pass
+    def combine(self, operands, env, cont):
+        raise NotImplementedError
 
 class Operative(Combiner):
     pass
@@ -397,6 +398,14 @@ class InterceptCont(Continuation):
         return self.interceptor.combine(Pair(val, ContWrapper(outer_cont)),
                                         outer_cont.env,
                                         self.next_cont)
+class ExtendCont(Continuation):
+    def __init__(self, receiver, env, cont_to_extend):
+        Continuation.__init__(self, cont_to_extend)
+        assert isinstance(receiver, Applicative)
+        self.receiver = receiver.wrapped_combiner
+        self.env = env
+    def plug_reduce(self, val):
+        return self.receiver.combine(val, self.env, self.prev)
 
 def car(val):
     assert isinstance(val, Pair)

@@ -38,12 +38,27 @@ def continuation2applicative(vals):
 
 @export('guard-continuation', simple=False)
 def guard_continuation(vals, env, cont):
-    return kt.evaluate_arguments(
-            vals,
-            env,
-            kt.ApplyCont(kt.Primitive(_guard_continuation),
-                         env,
-                         cont))
+    entry_guards, cont_to_guard, exit_guards = kt.pythonify_list(vals)
+    check_guards(entry_guards)
+    check_guards(exit_guards)
+    assert isinstance(cont_to_guard, kt.Continuation)
+    outer_cont = kt.OuterGuardCont(entry_guards, env, cont_to_guard)
+    inner_cont = kt.InnerGuardCont(exit_guards, env, outer_cont)
+    return cont.plug_reduce(inner_cont)
+
+@export('extend-continuation', simple=False)
+def extend_continuation(vals, env, cont):
+    args = kt.pythonify_list(vals)
+    if len(args) == 2:
+        cont_to_extend, receiver = args
+        recv_env = kt.Environment([])
+    else:
+        cont_to_extend, receiver, recv_env = args
+    assert isinstance(cont_to_extend, kt.Continuation)
+    assert isinstance(receiver, kt.Applicative)
+    assert isinstance(recv_env, kt.Environment)
+    return cont.plug_reduce(
+            kt.ExtendCont(receiver, recv_env, cont_to_extend))
 
 @export('$sequence')
 def sequence(exprs, env, cont):
@@ -184,15 +199,6 @@ def test_error(val):
     println(val)
     raise TestError(val)
     return kt.inert
-
-def _guard_continuation(vals, env, cont):
-    entry_guards, cont_to_guard, exit_guards = kt.pythonify_list(vals)
-    check_guards(entry_guards)
-    check_guards(exit_guards)
-    assert isinstance(cont_to_guard, kt.Continuation)
-    outer_cont = kt.OuterGuardCont(entry_guards, env, cont_to_guard)
-    inner_cont = kt.InnerGuardCont(exit_guards, env, outer_cont)
-    return cont.plug_reduce(inner_cont)
 
 def check_guards(guards):
     for guard in kt.iter_list(guards):

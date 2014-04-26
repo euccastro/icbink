@@ -161,6 +161,21 @@
         (apply-continuation in-cont "apply-cont-val")))
     " outer"))
 
+($t/t "only one interceptor gets triggered per clause"
+  ("first") "whatever"
+  ($let/cc cc
+    ($let
+      ((inner-cont
+         (guard-continuation
+           (list
+             (list (extend-continuation cc ($lambda #ignore #inert))
+                   ($lambda (val divert) (trace "doesn't match") val))
+             (list cc ($lambda (val divert) (trace "first") val))
+             (list cc ($lambda (val divert) (trace "second") val)))
+           cc
+           ())))
+      (apply-continuation inner-cont "whatever"))))
+
 ; I don't think this is Kernel semantics (e.g. read, in 4.10.5, "an applicative
 ; must have a list of operands", but is this cool or what?
 ($test "combine with non-list operand" "ha!" (($lambda x x) . "ha!"))

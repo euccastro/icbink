@@ -1,3 +1,4 @@
 *.swp
 *.pyc
 entry_point-c
+.log

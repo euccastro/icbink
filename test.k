@@ -143,5 +143,27 @@
                (string-append x " inner return")))))
         (apply-continuation in-cont "apply-cont-val")))))
 
+($t/t "diverting entry guard"
+  ("intercept")
+  "intercepted!"
+  (call/cc
+    ($lambda (cc)
+      ($let
+        ((in-cont
+           (extend-continuation
+             (guard-continuation
+               (list
+                 (list
+                   cc
+                   ($lambda (val divert)
+                     (trace "intercept")
+                     (apply divert "intercepted!"))))
+               cc
+               (list))
+             ($lambda x
+               (trace "inner")
+               (string-append x " inner return")))))
+        (apply-continuation in-cont "apply-cont-val")))))
+
 (println)
 (println "All OK.")

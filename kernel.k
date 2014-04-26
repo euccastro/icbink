@@ -71,3 +71,21 @@
   ($vau (symbol . body) env
     (eval (list call/cc (list* $lambda (list symbol) body))
           env)))
+
+($define! $let*
+  ($vau (bindings . body) env
+    (eval ($if (null? bindings)
+            (list* $let bindings body)
+            (list $let
+                  (list (car bindings))
+                  (list* $let* (cdr bindings) body)))
+          env)))
+
+($define! $letrec
+  ($vau (bindings . body) env
+    (eval (list* $let ()
+                 (list $define!
+                       (map1 car bindings)
+                       (list* list (map1 cadr bindings)))
+                 body)
+          env)))

@@ -138,6 +138,15 @@
              (string-append x " inner return")))))
       (apply-continuation in-cont "apply-cont-val"))))
 
+($test "$letrec"
+  #t
+  ($letrec ((f ($lambda (x lst)
+                 ($cond
+                   ((null? lst) #f)
+                   ((equal? x (car lst)) #t)
+                   (#t (f x (cdr lst)))))))
+    (f "a" (list "C" "b" "a"))))
+
 ($t/t "diverting entry guard"
   ("intercept")
   "intercepted! outer"
@@ -176,10 +185,85 @@
            ())))
       (apply-continuation inner-cont "whatever"))))
 
+($define! tracing-guard-builder
+  ($lambda (root-cont)
+    ($lambda (cont name)
+      (guard-continuation
+        (list (list root-cont
+                    ($lambda #ignore
+                      (trace (string-append "enter " name)))))
+        cont
+        (list (list root-cont
+                    ($lambda #ignore
+                      (trace (string-append "exit " name)))))))))
+
+($define! build-cont-tree
+  ($lambda (tree)
+    ($let/cc cc
+      ($let ((tracing-guard (tracing-guard-builder cc)))
+        ($letrec
+          ((aux
+             ($lambda (parent-cont node)
+               ($cond
+                 ((symbol? node)
+                  (println "symbol:" node)
+                  (tracing-guard parent-cont (symbol->string node)))
+                 ((pair? node)
+                  (println "pair:" node)
+                  ($let ((new-parent (aux parent-cont (car node)))
+                         (cons new-parent
+                               (map1
+                                 ($lambda (child)
+                                   (aux new-parent child)))))))))))
+          (println "here")
+          (aux cc tree))))))
+
+($define! $with-tracing-guard-tree
+  ($vau (tree . body) env
+    (eval (list* $let
+                 (list (list tree (build-cont-tree tree)))
+                 body)
+          env)))
+
+; won't work since we'll hit guards while trying to jump there.
+($define! $jump
+  ($vau (#ignore a #ignore b) env
+    (apply-continuation
+      (extend-continuation
+        (eval a env)
+        ($lambda #ignore
+          (apply-continuation (eval b env) #inert))))))
+
+(print (build-cont-tree a))
+
+#;($t/t "simple tracing guard"
+  ("exit right-child"
+   "exit right"
+   "enter left"
+   "enter left-child")
+  #inert
+  ($with-tracing-guard-tree
+    (base
+      (left left-child)
+      (right right-child))
+    ($jump from right-child to left-child)))
+
+
+#;($t/t "right order of interceptions"
+  ($let/cc cc
+    ($let*
+      (($tracing-guard (tracing-guard-builder cc))
+       (base ($tracing-guard cc))
+       (left ($tracing-guard base))
+       (right ($tracing-guard base))))))
+
 ; I don't think this is Kernel semantics (e.g. read, in 4.10.5, "an applicative
 ; must have a list of operands", but is this cool or what?
 ($test "combine with non-list operand" "ha!" (($lambda x x) . "ha!"))
 ($test "combine with improper list" ("a" . "b") (($lambda x x) "a" . "b"))
-($test "combine: final cdr of improper list matches 'rest' formal" ("a" "b") (($lambda (x . y) (list x y)) "a" . "b"))
+($test "combine: final cdr of improper list matches 'rest' formal"
+  ("a" "b")
+  (($lambda (x . y) (list x y)) "a" . "b"))
+
 (println)
 (println "All OK.")

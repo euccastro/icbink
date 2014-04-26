@@ -68,6 +68,9 @@ def run(args):
     load(filename, env)
     return 0
 
+def test():
+    run(["_", "test.k"])
+
 if __name__ == '__main__':
     run(sys.argv)
 

@@ -104,7 +104,26 @@
             (string-append x " inside")))
         "outside"))))
 
-#;($t/t "non-diverting entry guard" ("intercept" "inner")
+($t/t "guard-continuation, no guards"
+  ("inner")
+  "apply-cont-val inner return"
+  (call/cc
+    ($lambda (cc)
+      ($let
+        ((in-cont
+           (extend-continuation
+             (guard-continuation
+               (list)
+               cc
+               (list))
+             ($lambda x
+               (trace "inner")
+               (string-append x " inner return")))))
+        (apply-continuation in-cont "apply-cont-val")))))
+
+($t/t "non-diverting entry guard"
+  ("intercept" "inner")
+  "apply-cont-val modified inner return"
   (call/cc
     ($lambda (cc)
       ($let
@@ -119,9 +138,9 @@
                      (string-append val " modified"))))
                cc
                (list))
-             ($lambda (x)
+             ($lambda x
                (trace "inner")
-               (string-append x "inner return")))))
+               (string-append x " inner return")))))
         (apply-continuation in-cont "apply-cont-val")))))
 
 (println)

@@ -395,7 +395,7 @@ class InterceptCont(Continuation):
 
     def plug_reduce(self, val):
         outer_cont = self.prev
-        return self.interceptor.combine(Pair(val, ContWrapper(outer_cont)),
+        return self.interceptor.combine(Pair(val, Pair(ContWrapper(outer_cont), nil)),
                                         outer_cont.env,
                                         self.next_cont)
 class ExtendCont(Continuation):

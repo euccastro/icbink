@@ -202,7 +202,7 @@ def test_error(val):
 
 def check_guards(guards):
     for guard in kt.iter_list(guards):
-        interceptor, selector = kt.pythonify_list(guard)
+        selector, interceptor = kt.pythonify_list(guard)
         #XXX: kernelized error handling
         assert isinstance(selector, kt.Continuation)
         assert isinstance(interceptor, kt.Applicative)

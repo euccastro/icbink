@@ -248,11 +248,16 @@ class Continuation(KernelValue):
         self.prev = prev
         self.marked = False
     def plug_reduce(self, val):
+        trace(":: plugging", val.tostring())
         return self.prev.plug_reduce(val)
     def mark(self, boolean):
         self.marked = boolean
         if self.prev is not None:
             self.prev.mark(boolean)
+
+def trace(*args):
+    import primitive
+    primitive.trace(*args)
 
 class Done(Exception):
     def __init__(self, value):
@@ -276,6 +281,7 @@ class EvalArgsCont(Continuation):
         self.exprs = exprs
         self.env = env
     def plug_reduce(self, val):
+        trace(":: plugging", val.tostring())
         return evaluate_arguments(self.exprs,
                                   self.env,
                                   GatherArgsCont(val, self.prev))
@@ -285,6 +291,7 @@ class GatherArgsCont(Continuation):
         Continuation.__init__(self, prev)
         self.val = val
     def plug_reduce(self, val):
+        trace(":: plugging", val.tostring())
         return self.prev.plug_reduce(Pair(self.val, val))
 
 class ApplyCont(Continuation):
@@ -293,6 +300,7 @@ class ApplyCont(Continuation):
         self.combiner = combiner
         self.env = env
     def plug_reduce(self, args):
+        trace(":: plugging", args.tostring())
         return self.combiner.combine(args, self.env, self.prev)
 
 class CombineCont(Continuation):
@@ -301,6 +309,7 @@ class CombineCont(Continuation):
         self.operands = operands
         self.env = env
     def plug_reduce(self, val):
+        trace(":: plugging", val.tostring())
         return val.combine(self.operands, self.env, self.prev)
 
 class GuardCont(Continuation):
@@ -315,6 +324,7 @@ class SequenceCont(Continuation):
         self.exprs = exprs
         self.env = env
     def plug_reduce(self, val):
+        trace(":: plugging", val.tostring())
         return sequence(self.exprs, self.env, self.prev)
 
 def sequence(exprs, env, cont):
@@ -331,6 +341,7 @@ class IfCont(Continuation):
         self.alternative = alternative
         self.env = env
     def plug_reduce(self, val):
+        trace(":: plugging", val.tostring())
         if val is true:
             return self.consequent, self.env, self.prev
         elif val is false:
@@ -345,6 +356,7 @@ class CondCont(Continuation):
         self.env = env
         self.prev = prev
     def plug_reduce(self, val):
+        trace(":: plugging", val.tostring())
         if val is true:
             return sequence(cdar(self.clauses), self.env, self.prev)
         else:
@@ -361,6 +373,7 @@ class DefineCont(Continuation):
         self.definiend = definiend
         self.env = env
     def plug_reduce(self, val):
+        trace(":: plugging", val.tostring())
         match_parameter_tree(self.definiend, val, self.env)
         return self.prev.plug_reduce(inert)
 
@@ -394,6 +407,7 @@ class InterceptCont(Continuation):
         self.interceptor = interceptor.wrapped_combiner
 
     def plug_reduce(self, val):
+        trace(":: plugging", val.tostring())
         outer_cont = self.prev
         return self.interceptor.combine(
                 Pair(val, Pair(Applicative(ContWrapper(outer_cont)), nil)),
@@ -407,6 +421,7 @@ class ExtendCont(Continuation):
         self.receiver = receiver.wrapped_combiner
         self.env = env
     def plug_reduce(self, val):
+        trace(":: plugging", val.tostring())
         return self.receiver.combine(val, self.env, self.prev)
 
 def car(val):

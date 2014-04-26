@@ -200,6 +200,26 @@ def test_error(val):
     raise TestError(val)
     return kt.inert
 
+class TraceStatus(object):
+    def __init__(self):
+        self.trace = False
+
+_trace = TraceStatus()
+
+def trace(*args):
+    if _trace.trace:
+        print " ".join(args)
+
+@export('trace-on')
+def trace_on(val):
+    _trace.trace = True
+    return kt.inert
+
+@export('trace-off')
+def trace_off(val):
+    _trace.trace = False
+    return kt.inert
+
 def check_guards(guards):
     for guard in kt.iter_list(guards):
         selector, interceptor = kt.pythonify_list(guard)

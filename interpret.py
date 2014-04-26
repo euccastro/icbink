@@ -21,6 +21,7 @@ def run_one_expr(val, env):
     try:
         while True:
             driver.jit_merge_point(val=val, env=env, cont=cont)
+            primitive.trace(":: interpreting ", val.tostring())
             val, env, cont = val.interpret(env, cont)
     except kt.Done as e:
         return e.value

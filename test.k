@@ -215,7 +215,6 @@
                                (map1
                                  ($lambda (child)
                                    (aux new-parent child)))))))))))
-          (println "here")
           (aux cc tree))))))
 
 ($define! $with-tracing-guard-tree
@@ -234,7 +233,6 @@
         ($lambda #ignore
           (apply-continuation (eval b env) #inert))))))
 
-(print (build-cont-tree a))
 
 #;($t/t "simple tracing guard"
   ("exit right-child"
@@ -265,5 +263,15 @@
   ("a" "b")
   (($lambda (x . y) (list x y)) "a" . "b"))
 
+(println)
+(println "last...")
+;(trace-on)
+($define! cc
+  ($let ((cc ($let/cc cc cc)))
+    (println cc)
+    cc))
+((continuation->applicative cc) . "heh")
+(println cc)
+;(trace-off)
 (println)
 (println "All OK.")

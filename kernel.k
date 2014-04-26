@@ -66,3 +66,8 @@
 ($define! apply-continuation
   ($lambda (c o)
     (apply (continuation->applicative c) o)))
+
+($define! $let/cc
+  ($vau (symbol . body) env
+    (eval (list call/cc (list* $lambda (list symbol) body))
+          env)))

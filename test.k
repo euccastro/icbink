@@ -76,56 +76,73 @@
 ($test "list, cdddr" ("d" "e") (cdddr (list "a" "b" "c" "d" "e")))
 
 ($test "call/cc result" "x"
-  (call/cc
-    ($lambda (k)
-      (trace "a")
-      (apply (continuation->applicative k) "x")
-      (trace "b")
-      "y")))
+  ($let/cc cc
+    (trace "a")
+    (apply (continuation->applicative cc) "x")
+    (trace "b")
+    "y"))
 
 ($t/t "call/cc trace" ("a") "xyz"
   (string-append
     "x"
-    (call/cc
-      ($lambda (k)
+    ($let/cc cc
         (trace "a")
-        (apply-continuation k "y")
+        (apply-continuation cc "y")
         (trace "b")
-        "w"))
+        "w")
     "z"))
 
 ($test "simple extend-continuation" "outside inside"
-  (call/cc
-    ($lambda (cc)
-      (apply-continuation
-        (extend-continuation
-          cc
-          ($lambda x
-            (string-append x " inside")))
-        "outside"))))
+  ($let/cc cc
+    (apply-continuation
+      (extend-continuation
+        cc
+        ($lambda x
+          (string-append x " inside")))
+      "outside")))
 
 ($t/t "guard-continuation, no guards"
   ("inner")
   "apply-cont-val inner return"
-  (call/cc
-    ($lambda (cc)
-      ($let
-        ((in-cont
-           (extend-continuation
-             (guard-continuation
-               (list)
-               cc
-               (list))
-             ($lambda x
-               (trace "inner")
-               (string-append x " inner return")))))
-        (apply-continuation in-cont "apply-cont-val")))))
+  ($let/cc cc
+    ($let
+      ((in-cont
+         (extend-continuation
+           (guard-continuation
+             (list)
+             cc
+             (list))
+           ($lambda x
+             (trace "inner")
+             (string-append x " inner return")))))
+      (apply-continuation in-cont "apply-cont-val"))))
 
 ($t/t "non-diverting entry guard"
   ("intercept" "inner")
   "apply-cont-val modified inner return"
-  (call/cc
-    ($lambda (cc)
+  ($let/cc cc
+    ($let
+      ((in-cont
+         (extend-continuation
+           (guard-continuation
+             (list
+               (list
+                 cc
+                 ($lambda (val divert)
+                   (trace "intercept")
+                   (string-append val " modified"))))
+             cc
+             (list))
+           ($lambda x
+             (trace "inner")
+             (string-append x " inner return")))))
+      (apply-continuation in-cont "apply-cont-val"))))
+
+($t/t "diverting entry guard"
+  ("intercept")
+  "intercepted! outer"
+  (string-append
+    ($let/cc cc
       ($let
         ((in-cont
            (extend-continuation
@@ -135,37 +152,13 @@
                    cc
                    ($lambda (val divert)
                      (trace "intercept")
-                     (string-append val " modified"))))
+                     (apply divert "intercepted!"))))
                cc
                (list))
              ($lambda x
                (trace "inner")
                (string-append x " inner return")))))
-        (apply-continuation in-cont "apply-cont-val")))))
-
-($t/t "diverting entry guard"
-  ("intercept")
-  "intercepted! outer"
-
-  (string-append
-    (call/cc
-       ($lambda (cc)
-          ($let
-            ((in-cont
-               (extend-continuation
-                 (guard-continuation
-                   (list
-                     (list
-                       cc
-                       ($lambda (val divert)
-                         (trace "intercept")
-                         (apply divert "intercepted!"))))
-                   cc
-                   (list))
-                 ($lambda x
-                   (trace "inner")
-                   (string-append x " inner return")))))
-       (apply-continuation in-cont "apply-cont-val"))))
+        (apply-continuation in-cont "apply-cont-val")))
     " outer"))
 
 ; I don't think this is Kernel semantics (e.g. read, in 4.10.5, "an applicative

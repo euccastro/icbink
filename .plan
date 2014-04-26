@@ -1,4 +1,15 @@
 Make a basic interpreter:
+    source tracking!
+        how?
+        cheapest option might be that a KernelValue has a source_pos
+            but then what do we do with true, false, nil, inert...?
+        another option would be to have wrappers on objects:
+            xxx(source_pos, kernel_value)
+        mais precisamos modificar todo o código para aceder estes kernel_value fields?
+        ainda outra opçom é termos distintos trues, falses, nils, inerts...
+        é realmente um custo a maiores, se estamos tendo source_pos objects
+        lying around anyway?
+            um objecto só é o mesmo se vém do mesmo lugar na fonte
     Do Guarded continuations pretty early, because that's where I perceive the biggest risk and complication, and it may be traumatic to retrofit later on
         Build everything needed to test this.
             Test interception.

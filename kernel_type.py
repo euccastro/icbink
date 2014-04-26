@@ -15,6 +15,8 @@ class KernelTypeError(KernelError):
 
 class KernelValue(object):
     simple = True
+    def __init__(self, source_pos=None):
+        self.source_pos = source_pos
     def equal(self, other):
         return other is self
     def tostring(self):
@@ -32,9 +34,10 @@ class KernelValue(object):
 #XXX: Unicode
 class String(KernelValue):
     _immutable_fields_ = ['value']
-    def __init__(self, value):
+    def __init__(self, value, source_pos=None):
         assert isinstance(value, str)
         self.value = value
+        self.source_pos = source_pos
     @jit.elidable
     def tostring(self):
         return '"%s"' % self.value
@@ -48,9 +51,10 @@ class Symbol(KernelValue):
 
     _immutable_fields_ = ['value']
 
-    def __init__(self, value):
+    def __init__(self, value, source_pos=None):
         assert isinstance(value, str)
         self.value = value
+        self.source_pos = source_pos
 
     @jit.elidable
     def tostring(self):
@@ -58,6 +62,9 @@ class Symbol(KernelValue):
 
     def interpret_simple(self, env):
         return env.lookup(self)
+
+    def equal(self, other):
+        return isinstance(other, Symbol) and other.value == self.value
 
 _symbol_table = {}
 
@@ -72,44 +79,69 @@ class Null(KernelValue):
     @jit.elidable
     def tostring(self):
         return "()"
+    def equal(self, other):
+        return isinstance(other, Null)
 
 nil = Null()
+
+def is_nil(kv):
+    return nil.equal(kv)
 
 class Ignore(KernelValue):
     @jit.elidable
     def tostring(self):
         return '#ignore'
+    def equal(self, other):
+        return isinstance(other, Ignore)
 
 ignore = Ignore()
+
+def is_ignore(kv):
+    return ignore.equal(kv)
 
 class Inert(KernelValue):
     @jit.elidable
     def tostring(self):
         return '#inert'
+    def equal(self, other):
+        return isinstance(other, Inert)
 
 inert = Inert()
 
+def is_inert(kv):
+    return inert.equal(kv)
+
 class Boolean(KernelValue):
     _immutable_fields_ = ['value']
-    def __init__(self, value):
+    def __init__(self, value, source_pos=None):
         assert isinstance(value, bool)
         self.value = value
+        self.source_pos = source_pos
     @jit.elidable
     def tostring(self):
         return '#t' if self.value else '#f'
+    def equal(self, other):
+        return isinstance(other, Boolean) and other.value == self.value
 
 true = Boolean(True)
 false = Boolean(False)
 
+def is_true(kv):
+    return true.equal(kv)
+
+def is_false(kv):
+    return false.equal(kv)
+
 class Pair(KernelValue):
     _immutable_fields_ = ['car', 'cdr']
     simple = False
-    def __init__(self, car, cdr):
+    def __init__(self, car, cdr, source_pos=None):
         # XXX: specialize for performance?
         assert isinstance(car, KernelValue)
         assert isinstance(cdr, KernelValue)
         self.car = car
         self.cdr = cdr
+        self.source_pos = source_pos
     def tostring(self):
         s = rstring.StringBuilder()
         s.append("(")
@@ -142,11 +174,12 @@ class Operative(Combiner):
     pass
 
 class CompoundOperative(Operative):
-    def __init__(self, formals, eformal, exprs, static_env):
+    def __init__(self, formals, eformal, exprs, static_env, source_pos=None):
         self.formals = formals
         self.eformal = eformal
         self.exprs = exprs
         self.static_env = static_env
+        self.source_pos = source_pos
     def combine(self, operands, env, cont):
         eval_env = Environment([self.static_env])
         match_parameter_tree(self.formals, operands, eval_env)
@@ -156,18 +189,21 @@ class CompoundOperative(Operative):
 class Primitive(Operative):
     def __init__(self, code):
         self.code = code
+        self.source_pos = None
     def combine(self, operands, env, cont):
         return self.code(operands, env, cont)
 
 class SimplePrimitive(Operative):
     def __init__(self, code):
         self.code = code
+        self.source_pos = None
     def combine(self, operands, env, cont):
         return cont.plug_reduce(self.code(operands))
 
 class ContWrapper(Operative):
-    def __init__(self, cont):
+    def __init__(self, cont, source_pos=None):
         self.cont = cont
+        self.source_pos = source_pos
     def combine(self, operands, env, cont):
         return abnormally_pass(operands, cont, self.cont)
 
@@ -199,10 +235,11 @@ def select_interceptors(cont, cls):
     return ls
 
 class Applicative(Combiner):
-    def __init__(self, combiner):
+    def __init__(self, combiner, source_pos=None):
         #XXX: rename to wrapped_combiner
         assert isinstance(combiner, Combiner)
         self.wrapped_combiner = combiner
+        self.source_pos = source_pos
     def combine(self, operands, env, cont):
         return evaluate_arguments(operands,
                                   env,
@@ -212,6 +249,7 @@ class Program(KernelValue):
     """Not a real Kernel value; just to keep RPython happy."""
     def __init__(self, exprs):
         self.data = exprs
+        self.source_pos = None
     def tostring(self):
         return str([expr.tostring() for expr in self.data])
 
@@ -224,9 +262,10 @@ class NotFound(KernelError):
         return "Symbol not found: %s" % self.val.value
 
 class Environment(KernelValue):
-    def __init__(self, parents, bindings=None):
+    def __init__(self, parents, bindings=None, source_pos=None):
         self.parents = parents
         self.bindings = bindings or {}
+        self.source_pos = source_pos
     def set(self, symbol, value):
         self.bindings[symbol] = value
     def lookup(self, symbol):
@@ -244,9 +283,10 @@ class Environment(KernelValue):
 
 class Continuation(KernelValue):
     _immutable_args_ = ['prev']
-    def __init__(self, prev):
+    def __init__(self, prev, source_pos=None):
         self.prev = prev
         self.marked = False
+        self.source_pos = source_pos
     def plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         return self.prev.plug_reduce(val)
@@ -264,8 +304,9 @@ class Done(Exception):
         self.value = value
 
 class TerminalCont(Continuation):
-    def __init__(self):
+    def __init__(self, source_pos=None):
         Continuation.__init__(self, None)
+        self.source_pos = source_pos
     def plug_reduce(self, val):
         raise Done(val)
 
@@ -276,10 +317,11 @@ def evaluate_arguments(vals, env, cont):
         return vals, env, cont
 
 class EvalArgsCont(Continuation):
-    def __init__(self, exprs, env, prev):
+    def __init__(self, exprs, env, prev, source_pos=None):
         Continuation.__init__(self, prev)
         self.exprs = exprs
         self.env = env
+        self.source_pos = source_pos
     def plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         return evaluate_arguments(self.exprs,
@@ -287,91 +329,99 @@ class EvalArgsCont(Continuation):
                                   GatherArgsCont(val, self.prev))
 
 class GatherArgsCont(Continuation):
-    def __init__(self, val, prev):
+    def __init__(self, val, prev, source_pos=None):
         Continuation.__init__(self, prev)
         self.val = val
+        self.source_pos = source_pos
     def plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         return self.prev.plug_reduce(Pair(self.val, val))
 
 class ApplyCont(Continuation):
-    def __init__(self, combiner, env, prev):
+    def __init__(self, combiner, env, prev, source_pos=None):
         Continuation.__init__(self, prev)
         self.combiner = combiner
         self.env = env
+        self.source_pos = source_pos
     def plug_reduce(self, args):
         trace(":: plugging", args.tostring())
         return self.combiner.combine(args, self.env, self.prev)
 
 class CombineCont(Continuation):
-    def __init__(self, operands, env, prev):
+    def __init__(self, operands, env, prev, source_pos=None):
         Continuation.__init__(self, prev)
         self.operands = operands
         self.env = env
+        self.source_pos = source_pos
     def plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         return val.combine(self.operands, self.env, self.prev)
 
 class GuardCont(Continuation):
-    def __init__(self, guards, env, prev):
+    def __init__(self, guards, env, prev, source_pos=None):
         Continuation.__init__(self, prev)
         self.guards = guards
         self.env = env
+        self.source_pos = source_pos
 
 class SequenceCont(Continuation):
-    def __init__(self, exprs, env, prev):
+    def __init__(self, exprs, env, prev, source_pos=None):
         Continuation.__init__(self, prev)
         self.exprs = exprs
         self.env = env
+        self.source_pos = source_pos
     def plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         return sequence(self.exprs, self.env, self.prev)
 
 def sequence(exprs, env, cont):
     assert isinstance(exprs, Pair)
-    if exprs.cdr is nil:
+    if is_nil(exprs.cdr):
         return exprs.car, env, cont
     else:
         return exprs.car, env, SequenceCont(exprs.cdr, env, cont)
 
 class IfCont(Continuation):
-    def __init__(self, consequent, alternative, env, prev):
+    def __init__(self, consequent, alternative, env, prev, source_pos=None):
         Continuation.__init__(self, prev)
         self.consequent = consequent
         self.alternative = alternative
         self.env = env
+        self.source_pos = source_pos
     def plug_reduce(self, val):
         trace(":: plugging", val.tostring())
-        if val is true:
+        if is_true(val):
             return self.consequent, self.env, self.prev
-        elif val is false:
+        elif is_false(val):
             return self.alternative, self.env, self.prev
         else:
             assert False
 
 class CondCont(Continuation):
-    def __init__(self, clauses, env, prev):
+    def __init__(self, clauses, env, prev, source_pos=None):
         Continuation.__init__(self, prev)
         self.clauses = clauses
         self.env = env
         self.prev = prev
+        self.source_pos = source_pos
     def plug_reduce(self, val):
         trace(":: plugging", val.tostring())
-        if val is true:
+        if is_true(val):
             return sequence(cdar(self.clauses), self.env, self.prev)
         else:
             return cond(cdr(self.clauses), self.env, self.prev)
 
 def cond(vals, env, cont):
-    if vals is nil:
+    if is_nil(vals):
         return cont.plug_reduce(inert)
     return caar(vals), env, CondCont(vals, env, cont)
 
 class DefineCont(Continuation):
-    def __init__(self, definiend, env, prev):
+    def __init__(self, definiend, env, prev, source_pos=None):
         Continuation.__init__(self, prev)
         self.definiend = definiend
         self.env = env
+        self.source_pos = source_pos
     def plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         match_parameter_tree(self.definiend, val, self.env)
@@ -380,10 +430,10 @@ class DefineCont(Continuation):
 def match_parameter_tree(param_tree, operand_tree, env):
     if isinstance(param_tree, Symbol):
         env.set(param_tree, operand_tree)
-    elif param_tree is ignore:
+    elif is_ignore(param_tree):
         pass
-    elif param_tree is nil:
-        assert operand_tree is nil
+    elif is_nil(param_tree):
+        assert is_nil(operand_tree)
     elif isinstance(param_tree, Pair):
         assert isinstance(operand_tree, Pair)
         match_parameter_tree(param_tree.car, operand_tree.car, env)
@@ -396,7 +446,7 @@ class OuterGuardCont(GuardCont):
     pass
 
 class InterceptCont(Continuation):
-    def __init__(self, interceptor, next_cont, outer_cont):
+    def __init__(self, interceptor, next_cont, outer_cont, source_pos=None):
         # The outer continuation is the parent of this one for the purposes of
         # abnormal passes, but normal return from this continuation goes to the
         # next interceptor (or to the destination, if this is the last one)
@@ -405,6 +455,7 @@ class InterceptCont(Continuation):
         self.next_cont = next_cont
         assert isinstance(interceptor, Applicative)
         self.interceptor = interceptor.wrapped_combiner
+        self.source_pos = source_pos
 
     def plug_reduce(self, val):
         trace(":: plugging", val.tostring())
@@ -415,11 +466,12 @@ class InterceptCont(Continuation):
                 self.next_cont)
 
 class ExtendCont(Continuation):
-    def __init__(self, receiver, env, cont_to_extend):
+    def __init__(self, receiver, env, cont_to_extend, source_pos=None):
         Continuation.__init__(self, cont_to_extend)
         assert isinstance(receiver, Applicative)
         self.receiver = receiver.wrapped_combiner
         self.env = env
+        self.source_pos = source_pos
     def plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         return self.receiver.combine(val, self.env, self.prev)
@@ -443,7 +495,7 @@ def iter_list(vals):
     while isinstance(vals, Pair):
         yield vals.car
         vals = vals.cdr
-    assert vals is nil
+    assert is_nil(vals)
 
 def pythonify_list(vals):
     ret = []

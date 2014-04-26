@@ -123,7 +123,7 @@ def list_star(vals):
     assert isinstance(vals, kt.Pair)
     if isinstance(vals.cdr, kt.Pair):
         return kt.Pair(vals.car, list_star(vals.cdr))
-    elif vals.cdr is kt.nil:
+    elif kt.is_nil(vals.cdr):
         return vals.car
     else:
         return vals
@@ -145,7 +145,7 @@ for length in range(1, 6):
 @export('%s')
 def %s(val):
     assert isinstance(val, kt.Pair)
-    assert val.cdr is kt.nil
+    assert kt.is_nil(val.cdr)
     return kt.%s(val.car)
 """ % (name, name, name))
 
@@ -179,7 +179,7 @@ def print_(val):
         for v in kt.iter_list(val):
             print v.todisplay(),
     else:
-        assert val is kt.nil
+        assert kt.is_nil(val)
     return kt.inert
 
 @export('println')

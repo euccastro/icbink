@@ -256,10 +256,10 @@ class Program(KernelValue):
 class NotFound(KernelError):
     _immutable_vars_ = ['val']
     def __init__(self, val):
-        assert isinstance(val, Symbol)
+        assert isinstance(val, str)
         self.val = val
     def __str__(self):
-        return "Symbol not found: %s" % self.val.value
+        return "Symbol not found: %s" % self.val
 
 class Environment(KernelValue):
     def __init__(self, parents, bindings=None, source_pos=None):
@@ -267,10 +267,12 @@ class Environment(KernelValue):
         self.bindings = bindings or {}
         self.source_pos = source_pos
     def set(self, symbol, value):
-        self.bindings[symbol] = value
+        assert isinstance(symbol, Symbol)
+        self.bindings[symbol.value] = value
     def lookup(self, symbol):
+        assert isinstance(symbol, Symbol)
         try:
-            ret = self.bindings[symbol]
+            ret = self.bindings[symbol.value]
             return ret
         except KeyError:
             for parent in self.parents:
@@ -279,7 +281,7 @@ class Environment(KernelValue):
                     return ret
                 except NotFound:
                     pass
-            raise NotFound(symbol)
+            raise NotFound(symbol.value)
 
 class Continuation(KernelValue):
     _immutable_args_ = ['prev']

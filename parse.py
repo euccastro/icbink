@@ -27,7 +27,7 @@ grammar = r"""
     list: ["("] >sequence< [")"];
     dotted_list: ["("] >sequence< ["."] expr [")"];
     atom: <BOOLEAN> | <INERT> | <IGNORE_VAL> | <SUPPRESS> | <STRING> | <IDENTIFIER> | <nil>;
-    nil: ["("] [")"];
+    nil: "(" ")";
     """
 
 class Suppress(kt.KernelValue):
@@ -42,25 +42,30 @@ class Visitor(RPythonVisitor):
         return kt.Program(
                 filter_suppressed([self.dispatch(c) for c in node.children]))
     def visit_BOOLEAN(self, node):
-        return kt.true if node.token.source == "#t" else kt.false
+        return kt.Boolean(node.token.source == '#t',
+                          node.getsourcepos())
     def visit_IDENTIFIER(self, node):
-        return kt.get_interned(node.token.source)
+        return kt.Symbol(node.token.source,
+                         node.getsourcepos())
     def visit_STRING(self, node):
         # Remove quotation marks.
-        return kt.String(node.token.source[:-1][1:])
+        return kt.String(node.token.source[:-1][1:],
+                         node.getsourcepos())
     def visit_IGNORE_VAL(self, node):
-        return kt.ignore
+        return kt.Ignore(node.getsourcepos())
     def visit_INERT(self, node):
-        return kt.inert
+        return kt.Inert(node.getsourcepos())
     def visit_list(self, node):
         return build_pair_chain(
                 filter_suppressed([self.dispatch(c) for c in node.children])
-                + [kt.nil])
+                + [kt.nil],
+                node.getsourcepos())
     def visit_dotted_list(self, node):
         return build_pair_chain(
-                filter_suppressed([self.dispatch(c) for c in node.children]))
+                filter_suppressed([self.dispatch(c) for c in node.children]),
+                node.getsourcepos())
     def visit_nil(self, node):
-        return kt.nil
+        return kt.Null(node.getsourcepos())
 
 def iter_with_prev(lst):
     prev = None
@@ -73,12 +78,12 @@ def filter_suppressed(lst):
             for x, prev in iter_with_prev(lst)
             if x is not suppress and prev is not suppress]
 
-def build_pair_chain(lst, start=0):
+def build_pair_chain(lst, source_pos, start=0):
     end = len(lst)
     if end - start == 2:
         return kt.Pair(lst[start], lst[start+1])
     else:
-        return kt.Pair(lst[start], build_pair_chain(lst, start+1))
+        return kt.Pair(lst[start], build_pair_chain(lst, source_pos, start+1))
 
 regexs, rules, ToAST = parse_ebnf(grammar)
 parse_ebnf = make_parse_function(regexs, rules, eof=True)

@@ -1,4 +1,7 @@
 Make a basic interpreter:
+    symbols are matched on string in environments.  only symbols without
+    source positions get cached
+        so maybe caching is not such big a win
     source tracking!
         how?
         cheapest option might be that a KernelValue has a source_pos

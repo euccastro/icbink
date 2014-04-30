@@ -18,7 +18,7 @@ def export(name, simple=True):
             comb = kt.Primitive(fn)
         if not operative:
             comb = kt.Applicative(comb)
-        exports[kt.get_interned(name)] = comb
+        exports[name] = comb
         return fn
     return wrapper
 
@@ -248,5 +248,5 @@ for name in ['boolean',
              'combiner',
              'string']:
     cls = getattr(kt, name.capitalize())
-    exports[kt.get_interned(name+"?")] = make_pred(cls)
+    exports[name+"?"] = make_pred(cls)
 

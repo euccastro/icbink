@@ -1,4 +1,10 @@
+Debugging mode:
+    Start by just tracing to every expression that has source_pos not None.
+
 Make a basic interpreter:
+    debugging mode
+    report sources on errors
+    inherit source positions wherever it makes sense
     symbols are matched on string in environments.  only symbols without
     source positions get cached
         so maybe caching is not such big a win

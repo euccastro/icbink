@@ -200,24 +200,45 @@ def test_error(val):
     raise TestError(val)
     return kt.inert
 
-class TraceStatus(object):
+class DebugStatus(object):
     def __init__(self):
         self.trace = False
+        self.debug = False
+        self.last_source_pos = None
 
-_trace = TraceStatus()
+_debug = DebugStatus()
 
 def trace(*args):
-    if _trace.trace:
-        print " ".join(args)
+    if _debug.trace:
+        print " ".join(list(args))
+
+def debug(boolean):
+    assert isinstance(boolean, bool)
+    _debug.debug = boolean
+
+@export('debug-on')
+def _debug_on(val):
+    assert kt.nil.equal(val)
+    debug(True)
+
+@export('debug-off')
+def _debug_off(val):
+    assert kt.nil.equal(val)
+    debug(False)
+
+def debug_off():
+    _debug.debug = False
 
 @export('trace-on')
 def trace_on(val):
-    _trace.trace = True
+    assert kt.nil.equal(val)
+    _debug.trace = True
     return kt.inert
 
 @export('trace-off')
 def trace_off(val):
-    _trace.trace = False
+    assert kt.nil.equal(val)
+    _debug.trace = False
     return kt.inert
 
 def check_guards(guards):

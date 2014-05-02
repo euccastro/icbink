@@ -8,7 +8,6 @@ from rpython.rlib import jit
 import kernel_type as kt
 import parse
 import primitive
-import traceback
 
 
 def empty_environment():
@@ -50,7 +49,8 @@ def run_one_expr(val,
             try:
                 val, env, cont = val.interpret(env, cont)
             except kt.KernelError as e:
-                traceback.print_exc()
+                print
+                print "*** ERROR *** :", e
                 print_source_pos(val, last_source_pos, filename, source_lines)
                 debug_interaction(val, env, filename, source_lines)
     except kt.Done as e:

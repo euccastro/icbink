@@ -265,6 +265,7 @@
 
 (debug-on)
 (print (string-append "one" "two"))
+(string-append "a" "b" this-name-does-not-exist "c")
 (debug-off)
 #;($sequence
 

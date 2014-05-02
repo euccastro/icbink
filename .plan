@@ -1,10 +1,9 @@
-Debugging mode:
-    Print results of traced expressions?
-    Add file info to source_pos objects?  maybe as a shared member?
-
 Make a basic interpreter:
-    debugging mode
     report sources on errors
+        proper error reporting first!
+        launch debugger on errors?
+            factor out of the loop
+        remember what line are we currently processing?
     inherit source positions wherever it makes sense
     symbols are matched on string in environments.  only symbols without
     source positions get cached
@@ -29,6 +28,8 @@ Make a basic interpreter:
         Guarded continuation-based exception handling.
 
 --- Postponed
+
+Cleanup: Add file info to source_pos objects?  maybe as a shared member?
 
 Check out pypy/rpython/rlib/parsing/lexer.py:SourcePos when we want to use source position for debugging and exceptions.
 Optimize dictionaries using maps:

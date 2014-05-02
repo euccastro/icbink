@@ -8,6 +8,7 @@ from rpython.rlib import jit
 import kernel_type as kt
 import parse
 import primitive
+import traceback
 
 
 def empty_environment():
@@ -32,59 +33,73 @@ def run_one_expr(val,
                  filename=None,
                  source_lines=None,
                  ignore_debug=False):
+    last_source_pos = None
     cont = kt.TerminalCont()
     try:
         while True:
+            if val.source_pos is not None:
+                last_source_pos = val.source_pos
             if (not ignore_debug
                 and primitive.debug_mode()
                 and val.source_pos is not None):
                 cont = kt.DebugWrapCont(val.tostring(), cont)
-                print
-                if filename is not None:
-                    print ("%s," % filename),
-                # Editors show 1-based line and column numbers, while
-                # source_pos objects are 0-based.
-                print "line %s, column %s" % (val.source_pos.lineno + 1,
-                                              val.source_pos.columnno + 1)
-                if source_lines is None:
-                    print val.tostring()
-                else:
-                    print source_lines[val.source_pos.lineno]
-                    print "%s^" % (" " * val.source_pos.columnno)
-                try:
-                    while True:
-                        os.write(1, "> ")
-                        cmd = readline()
-                        if cmd == "":
-                            continue
-                        elif cmd == ",c":
-                            primitive.debug_off()
-                            break
-                        elif cmd == ",s":
-                            break
-                        elif cmd == ",e":
-                            print_bindings(env, recursive=False)
-                        elif cmd == ",E":
-                            print_bindings(env, recursive=True)
-                        elif cmd == ",q":
-                            raise SystemExit
-                        else:
-                            dbgexprs = parse.parse(cmd)
-                            for dbgexpr in dbgexprs.data:
-                                dbg_val = run_one_expr(dbgexpr,
-                                                       env,
-                                                       filename,
-                                                       source_lines,
-                                                       ignore_debug=True)
-                                print dbg_val.tostring()
-                except EOFError:
-                    primitive.debug_off()
-                    break
+                print_source_pos(val, last_source_pos, filename, source_lines)
+                debug_interaction(val, env, filename, source_lines)
             driver.jit_merge_point(val=val, env=env, cont=cont)
             primitive.trace(":: interpreting ", val.tostring())
-            val, env, cont = val.interpret(env, cont)
+            try:
+                val, env, cont = val.interpret(env, cont)
+            except kt.KernelError as e:
+                traceback.print_exc()
+                print_source_pos(val, last_source_pos, filename, source_lines)
+                debug_interaction(val, env, filename, source_lines)
     except kt.Done as e:
         return e.value
+
+def print_source_pos(val, source_pos, filename, source_lines):
+    print
+    if filename is not None:
+        print ("%s," % filename),
+    # Editors show 1-based line and column numbers, while
+    # source_pos objects are 0-based.
+    if source_pos is not None:
+        print "line %s, column %s" % (val.source_pos.lineno + 1,
+                                      val.source_pos.columnno + 1)
+    if source_lines is None:
+        print val.tostring()
+    else:
+        print source_lines[val.source_pos.lineno]
+        print "%s^" % (" " * val.source_pos.columnno)
+
+def debug_interaction(val, env, filename, source_lines):
+    try:
+        while True:
+            os.write(1, "> ")
+            cmd = readline()
+            if cmd == "":
+                continue
+            elif cmd == ",c":
+                primitive.debug_off()
+                break
+            elif cmd == ",s":
+                break
+            elif cmd == ",e":
+                print_bindings(env, recursive=False)
+            elif cmd == ",E":
+                print_bindings(env, recursive=True)
+            elif cmd == ",q":
+                raise SystemExit
+            else:
+                dbgexprs = parse.parse(cmd)
+                for dbgexpr in dbgexprs.data:
+                    dbg_val = run_one_expr(dbgexpr,
+                                           env,
+                                           filename,
+                                           source_lines,
+                                           ignore_debug=True)
+                    print dbg_val.tostring()
+    except EOFError:
+        primitive.debug_off()
 
 #XXX adapted from Mariano Guerra's plang; research whether there's equivalent functionality in rlib.
 def readline():

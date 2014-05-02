@@ -233,6 +233,15 @@
         ($lambda #ignore
           (apply-continuation (eval b env) #inert))))))
 
+($t/t "simplest tracing guard"
+  ("enter child")
+  "x"
+  (debug-on)
+  ($let/cc cc
+    ($let* ((build-tracing-guard (tracing-guard-builder cc))
+            (child-cont (build-tracing-guard "child" cc)))
+      (apply-continuation child-cont "x"))))
+
 
 #;($t/t "simple tracing guard"
   ("exit right-child"
@@ -263,23 +272,11 @@
   ("a" "b")
   (($lambda (x . y) (list x y)) "a" . "b"))
 
-(debug-on)
-(print (string-append "one" "two"))
-(string-append "a" "b" this-name-does-not-exist "c")
-(debug-off)
 #;($sequence
+  (debug-on)
+  (print (string-append "a" "b"))
+  (debug-off))
 
-  (println)
-  (println "last...")
-  ;(trace-on)
-  ($define! cc
-    ($let ((cc ($let/cc cc cc)))
-      (println cc)
-      cc))
-  ((continuation->applicative cc) . "heh")
-  (println cc)
-  ;(trace-off)
-  )
 
 (println)
 (println "All OK.")

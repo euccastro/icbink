@@ -1,35 +1,19 @@
 Make a basic interpreter:
-    report sources on errors
-        proper error reporting first!
-        launch debugger on errors?
-            factor out of the loop
-        remember what line are we currently processing?
-    inherit source positions wherever it makes sense
-    symbols are matched on string in environments.  only symbols without
-    source positions get cached
-        so maybe caching is not such big a win
-    source tracking!
-        how?
-        cheapest option might be that a KernelValue has a source_pos
-            but then what do we do with true, false, nil, inert...?
-        another option would be to have wrappers on objects:
-            xxx(source_pos, kernel_value)
-        mais precisamos modificar todo o código para aceder estes kernel_value fields?
-        ainda outra opçom é termos distintos trues, falses, nils, inerts...
-        é realmente um custo a maiores, se estamos tendo source_pos objects
-        lying around anyway?
-            um objecto só é o mesmo se vém do mesmo lugar na fonte
+    debugger: enter to repeat last command
+    implement ,n (and ,r?)
+    BUG: I really need to track source filename in source_pos
     Do Guarded continuations pretty early, because that's where I perceive the biggest risk and complication, and it may be traumatic to retrofit later on
-        Build everything needed to test this.
-            Test interception.
-                do guard-dynamic-extent.
-                    Maybe I can test something before that!
-                        (extend-continuation (guard-continuation ...))
+        Test (building everything needed in the process)
         Guarded continuation-based exception handling.
+
+Document rpython branch.
+
+Clean up naming in the various tracing/debugging facilities.
 
 --- Postponed
 
-Cleanup: Add file info to source_pos objects?  maybe as a shared member?
+inherit source positions wherever it makes sense
+    YAGNI?
 
 Check out pypy/rpython/rlib/parsing/lexer.py:SourcePos when we want to use source position for debugging and exceptions.
 Optimize dictionaries using maps:

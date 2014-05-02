@@ -29,56 +29,53 @@ def print_bindings(env, recursive=False, indent=0):
 
 def run_one_expr(val,
                  env,
-                 filename=None,
-                 source_lines=None,
+                 debug_data=None,
                  ignore_debug=False):
-    last_source_pos = None
+    if debug_data is None:
+        debug_data = DebugData()
     cont = kt.TerminalCont()
     try:
         while True:
             if val.source_pos is not None:
-                last_source_pos = val.source_pos
+                debug_data.latest_source_pos = val.source_pos
             if (not ignore_debug
                 and primitive.debug_mode()
                 and val.source_pos is not None):
                 cont = kt.DebugWrapCont(val.tostring(), cont)
-                print_source_pos(val, last_source_pos, filename, source_lines)
-                debug_interaction(val, env, filename, source_lines)
+                print
+                debug_data.latest_source_pos.print_()
+                debug_interaction(val, env, debug_data)
             driver.jit_merge_point(val=val, env=env, cont=cont)
             primitive.trace(":: interpreting ", val.tostring())
             try:
                 val, env, cont = val.interpret(env, cont)
-            except kt.KernelError as e:
+            except (kt.KernelError, AssertionError) as e:
                 print
-                print "*** ERROR *** :", e
-                print_source_pos(val, last_source_pos, filename, source_lines)
-                debug_interaction(val, env, filename, source_lines)
+                #XXX: find out how to print (something like a) Python traceback
+                #     in RPython
+                print "*** ERROR *** :", repr(e), e.message
+                debug_data.latest_source_pos.print_()
+                debug_interaction(val, env, debug_data)
     except kt.Done as e:
         return e.value
 
-def print_source_pos(val, source_pos, filename, source_lines):
-    print
-    if filename is not None:
-        print ("%s," % filename),
-    # Editors show 1-based line and column numbers, while
-    # source_pos objects are 0-based.
-    if source_pos is not None:
-        print "line %s, column %s" % (val.source_pos.lineno + 1,
-                                      val.source_pos.columnno + 1)
-    if source_lines is None:
-        print val.tostring()
-    else:
-        print source_lines[val.source_pos.lineno]
-        print "%s^" % (" " * val.source_pos.columnno)
+class DebugData:
+    def __init__(self):
+        self.latest_source_pos = None
+        self.latest_command = None
 
-def debug_interaction(val, env, filename, source_lines):
+def debug_interaction(val, env, debug_data):
     try:
         while True:
             os.write(1, "> ")
             cmd = readline()
             if cmd == "":
-                continue
-            elif cmd == ",c":
+                if debug_data.latest_command is not None:
+                    cmd = debug_data.latest_command
+                else:
+                    continue
+            debug_data.latest_command = cmd
+            if cmd == ",c":
                 primitive.debug_off()
                 break
             elif cmd == ",s":
@@ -94,8 +91,7 @@ def debug_interaction(val, env, filename, source_lines):
                 for dbgexpr in dbgexprs.data:
                     dbg_val = run_one_expr(dbgexpr,
                                            env,
-                                           filename,
-                                           source_lines,
+                                           debug_data,
                                            ignore_debug=True)
                     print dbg_val.tostring()
     except EOFError:
@@ -145,12 +141,12 @@ def test():
     assert isinstance(keval('string-append', env), kt.Applicative)
     print "All OK."
 
-def load(filename, env):
-    src = open(filename).read()
+def load(path, env):
+    src = open(path).read()
     src_lines = src.split("\n")
-    program = parse.parse(src)
+    program = parse.parse(src, path)
     for expr in program.data:
-        run_one_expr(expr, env, filename=filename, source_lines=src_lines)
+        run_one_expr(expr, env)
 
 def run(args):
     env = extended_environment()

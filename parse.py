@@ -38,7 +38,31 @@ class Suppress(kt.KernelValue):
 suppress = Suppress()
 suppress_next = Suppress()
 
+class SourceFile(object):
+    _immutable_fields_ = ['path', 'lines']
+    def __init__(self, path, lines):
+        self.path = path
+        self.lines = lines
+
+class SourcePos(object):
+    _immutable_fields_ = ['source_file', 'line', 'column']
+    def __init__(self, source_file, line, column):
+        self.source_file = source_file
+        self.line = line
+        self.column = column
+    def print_(self):
+        # Editors show 1-based line and column numbers, while
+        # source_pos objects are 0-based.
+        print "%s, line %s, column %s:" % (self.source_file.path,
+                                           self.line + 1,
+                                           self.column + 1)
+        print self.source_file.lines[self.line]
+        print "%s^" % (" " * self.column)
+
 class Visitor(RPythonVisitor):
+    def __init__(self, source_file=None):
+        RPythonVisitor.__init__(self)
+        self.source_file = source_file
     def visit_SUPPRESS(self, node):
         return suppress_next
     def visit_sequence(self, node):
@@ -46,33 +70,36 @@ class Visitor(RPythonVisitor):
                 filter_suppressed([self.dispatch(c) for c in node.children]))
     def visit_BOOLEAN(self, node):
         return kt.Boolean(node.token.source == '#t',
-                          node.getsourcepos())
+                          self.make_src_pos(node))
     def visit_IDENTIFIER(self, node):
         return kt.Symbol(node.token.source,
-                         node.getsourcepos())
+                         self.make_src_pos(node))
     def visit_STRING(self, node):
         # Remove quotation marks.
         return kt.String(node.token.source[:-1][1:],
-                         node.getsourcepos())
+                         self.make_src_pos(node))
     def visit_IGNORE_VAL(self, node):
-        return kt.Ignore(node.getsourcepos())
+        return kt.Ignore(self.make_src_pos(node))
     def visit_INERT(self, node):
-        return kt.Inert(node.getsourcepos())
+        return kt.Inert(self.make_src_pos(node))
     def visit_list(self, node):
         return build_pair_chain(
                 filter_suppressed([self.dispatch(c) for c in node.children])
                 + [kt.nil],
-                node.getsourcepos())
+                self.make_src_pos(node))
     def visit_dotted_list(self, node):
         return build_pair_chain(
                 filter_suppressed([self.dispatch(c) for c in node.children]),
-                node.getsourcepos())
+                self.make_src_pos(node))
     def visit_nil(self, node):
-        return kt.Null(node.getsourcepos())
+        return kt.Null(self.make_src_pos(node))
     def visit_LEFT_PAREN(self, node):
         return suppress
     def visit_RIGHT_PAREN(self, node):
         return suppress
+    def make_src_pos(self, node):
+        src_pos = node.getsourcepos()
+        return SourcePos(self.source_file, src_pos.lineno, src_pos.columnno)
 
 def iter_with_prev(lst):
     prev = None
@@ -96,8 +123,9 @@ def build_pair_chain(lst, source_pos, start=0):
 regexs, rules, ToAST = parse_ebnf(grammar)
 parse_ebnf = make_parse_function(regexs, rules, eof=True)
 
-def parse(s):
-    return Visitor().dispatch(ToAST().transform(parse_ebnf(s)))
+def parse(s, path='<no path>'):
+    source_file = SourceFile(path, s.split("\n"))
+    return Visitor(source_file).dispatch(ToAST().transform(parse_ebnf(s)))
 
 def test(s):
     try:

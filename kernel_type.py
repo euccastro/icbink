@@ -6,9 +6,9 @@ from rpython.rlib import rstring
 
 class KernelError(Exception):
     def __init__(self, msg):
-        self.msg = msg
+        self.message = msg
     def __str__(self):
-        return self.msg
+        return self.message
 
 class KernelTypeError(KernelError):
     pass

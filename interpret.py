@@ -38,6 +38,7 @@ def run_one_expr(val,
             if (not ignore_debug
                 and primitive.debug_mode()
                 and val.source_pos is not None):
+                cont = kt.DebugWrapCont(val.tostring(), cont)
                 print
                 if filename is not None:
                     print ("%s," % filename),

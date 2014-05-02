@@ -215,16 +215,17 @@ def trace(*args):
 def debug(boolean):
     assert isinstance(boolean, bool)
     _debug.debug = boolean
+    return kt.inert
 
 @export('debug-on')
 def _debug_on(val):
     assert kt.nil.equal(val)
-    debug(True)
+    return debug(True)
 
 @export('debug-off')
 def _debug_off(val):
     assert kt.nil.equal(val)
-    debug(False)
+    return debug(False)
 
 def debug_off():
     _debug.debug = False

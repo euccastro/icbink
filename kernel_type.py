@@ -478,6 +478,14 @@ class ExtendCont(Continuation):
         trace(":: plugging", val.tostring())
         return self.receiver.combine(val, self.env, self.prev)
 
+class DebugWrapCont(Continuation):
+    def __init__(self, header, prev):
+        Continuation.__init__(self, prev)
+        self.header = header
+    def plug_reduce(self, val):
+        print "<<", self.header, "returns", val.tostring()
+        return Continuation.plug_reduce(self, val)
+
 def car(val):
     assert isinstance(val, Pair)
     return val.car

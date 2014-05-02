@@ -1,6 +1,4 @@
 Debugging mode:
-    Start by just tracing to every expression that has source_pos not None.
-    See why we're not printing combinations
     Print results of traced expressions?
     Add file info to source_pos objects?  maybe as a shared member?
 

@@ -19,25 +19,28 @@ grammar = r"""
     INERT: "#inert";
     IGNORE_VAL: "#ignore";
     SUPPRESS: "#;";
+    LEFT_PAREN: "\(";
+    RIGHT_PAREN: "\)";
     IDENTIFIER: "\+|\-|[a-zA-Z!$%&\*/:<=>\?@\^_~][a-zA-Z0-9!$%&\*\+\-/:<=>\?@\^_~]*";
     STRING: "\"([^\"]|\\\")*\"";
     IGNORE: " |\n|;[^\n]*\n";
     sequence: expr >sequence< | expr;
     expr: <list> | <dotted_list> | <atom>;
-    list: ["("] >sequence< [")"];
-    dotted_list: ["("] >sequence< ["."] expr [")"];
+    list: LEFT_PAREN >sequence< RIGHT_PAREN;
+    dotted_list: LEFT_PAREN >sequence< ["."] expr RIGHT_PAREN;
     atom: <BOOLEAN> | <INERT> | <IGNORE_VAL> | <SUPPRESS> | <STRING> | <IDENTIFIER> | <nil>;
-    nil: "(" ")";
+    nil: LEFT_PAREN RIGHT_PAREN;
     """
 
 class Suppress(kt.KernelValue):
     "Not a real Kernel value; just to appease RPython."
     pass
 suppress = Suppress()
+suppress_next = Suppress()
 
 class Visitor(RPythonVisitor):
     def visit_SUPPRESS(self, node):
-        return suppress
+        return suppress_next
     def visit_sequence(self, node):
         return kt.Program(
                 filter_suppressed([self.dispatch(c) for c in node.children]))
@@ -66,6 +69,10 @@ class Visitor(RPythonVisitor):
                 node.getsourcepos())
     def visit_nil(self, node):
         return kt.Null(node.getsourcepos())
+    def visit_LEFT_PAREN(self, node):
+        return suppress
+    def visit_RIGHT_PAREN(self, node):
+        return suppress
 
 def iter_with_prev(lst):
     prev = None
@@ -76,14 +83,15 @@ def iter_with_prev(lst):
 def filter_suppressed(lst):
     return [x
             for x, prev in iter_with_prev(lst)
-            if x is not suppress and prev is not suppress]
+            if not isinstance(x, Suppress)
+               and prev is not suppress_next]
 
 def build_pair_chain(lst, source_pos, start=0):
     end = len(lst)
     if end - start == 2:
-        return kt.Pair(lst[start], lst[start+1])
+        return kt.Pair(lst[start], lst[start+1], source_pos=source_pos)
     else:
-        return kt.Pair(lst[start], build_pair_chain(lst, source_pos, start+1))
+        return kt.Pair(lst[start], build_pair_chain(lst, None, start+1), source_pos=source_pos)
 
 regexs, rules, ToAST = parse_ebnf(grammar)
 parse_ebnf = make_parse_function(regexs, rules, eof=True)

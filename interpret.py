@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
+import os
+import sys
+
 from rpython.rlib import jit
 
 import kernel_type as kt
 import parse
 import primitive
-import sys
 
 
 def empty_environment():
@@ -16,15 +18,59 @@ _ground_env = kt.Environment([], primitive.exports)
 def standard_environment():
     return kt.Environment([_ground_env], {})
 
-def run_one_expr(val, env):
+def run_one_expr(val, env, ignore_debug=False):
     cont = kt.TerminalCont()
     try:
         while True:
+            if (not ignore_debug
+                and primitive.debug_mode()
+                and val.source_pos is not None):
+                print "line", val.source_pos.lineno,
+                print ", col", val.source_pos.columnno
+                # XXX: optionally take source filename so we can show the line
+                # instead
+                print val.tostring()
+                try:
+                    while True:
+                        os.write(1, "> ")
+                        cmd = readline()
+                        if cmd == "":
+                            continue
+                        elif cmd == ",c":
+                            primitive.debug_off()
+                            break
+                        elif cmd == ",s":
+                            break
+                        else:
+                            dbgexprs = parse.parse(cmd)
+                            for dbgexpr in dbgexprs.data:
+                                dbg_val = run_one_expr(dbgexpr,
+                                                       env,
+                                                       ignore_debug=True)
+                                print dbg_val.tostring()
+                except EOFError:
+                    primitive.debug_off()
+                    break
             driver.jit_merge_point(val=val, env=env, cont=cont)
             primitive.trace(":: interpreting ", val.tostring())
             val, env, cont = val.interpret(env, cont)
     except kt.Done as e:
         return e.value
+
+#XXX adapted from Mariano Guerra's plang; research whether there's equivalent functionality in rlib.
+def readline():
+    result = []
+    while True:
+        s = os.read(0, 1)
+        if s == '\n':
+            break
+        if s == '':
+            if len(result) > 0:
+                break
+            else:
+                raise EOFError
+        result.append(s)
+    return "".join(result)
 
 def get_printable_location(green_val):
     if green_val is None:

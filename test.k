@@ -263,15 +263,22 @@
   ("a" "b")
   (($lambda (x . y) (list x y)) "a" . "b"))
 
-(println)
-(println "last...")
-;(trace-on)
-($define! cc
-  ($let ((cc ($let/cc cc cc)))
-    (println cc)
-    cc))
-((continuation->applicative cc) . "heh")
-(println cc)
-;(trace-off)
+(debug-on)
+(print (string-append "one" "two"))
+(debug-off)
+#;($sequence
+
+  (println)
+  (println "last...")
+  ;(trace-on)
+  ($define! cc
+    ($let ((cc ($let/cc cc cc)))
+      (println cc)
+      cc))
+  ((continuation->applicative cc) . "heh")
+  (println cc)
+  ;(trace-off)
+  )
+
 (println)
 (println "All OK.")

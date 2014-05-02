@@ -229,6 +229,9 @@ def _debug_off(val):
 def debug_off():
     _debug.debug = False
 
+def debug_mode():
+    return _debug.debug
+
 @export('trace-on')
 def trace_on(val):
     assert kt.nil.equal(val)

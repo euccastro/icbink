@@ -42,7 +42,6 @@ def run_one_expr(val,
                 and primitive.debug_mode()
                 and val.source_pos is not None):
                 print
-                debug_data.source_pos.print_()
                 debug_interaction(debug_data, env, cont)
             driver.jit_merge_point(val=val, env=env, cont=cont)
             primitive.trace(":: interpreting ", val.tostring())
@@ -53,7 +52,6 @@ def run_one_expr(val,
                 #XXX: find out how to print (something like a) Python traceback
                 #     in RPython
                 print "*** ERROR *** :", repr(e), e.message
-                debug_data.source_pos.print_()
                 debug_interaction(debug_data, env, cont)
     except kt.Done as e:
         return e.value
@@ -79,7 +77,6 @@ class ReturnDebugHook(DebugHook):
         if debug_data.skip:
             return
         print
-        source_pos.print_()
         print "<< returns", val.tostring()
         debug_interaction(DebugData(source_pos,
                                     debug_data.command,
@@ -87,18 +84,30 @@ class ReturnDebugHook(DebugHook):
                           env,
                           cont)
 
-debug_hooks = [ReturnDebugHook()]
+class NDebugHook(DebugHook):
+    def __init__(self, cont, debug_data):
+        self.cont = cont
+        self.debug_data = debug_data
+    def trigger(self, cont, val):
+        if cont is self.cont:
+            self.debug_data.skip = False
+
+debug_hooks = []
+
+return_debug_hook = ReturnDebugHook()
 
 def return_hook_callback(val, cont):
     if primitive.debug_mode():
         for hook in debug_hooks:
             hook.trigger(val, cont)
+        return_debug_hook.trigger(val, cont)
 
 kt.return_hook.callback = return_hook_callback
 
 def debug_interaction(debug_data, env, cont):
     if debug_data.skip:
         return
+    debug_data.source_pos.print_()
     try:
         while True:
             os.write(1, "> ")
@@ -111,12 +120,15 @@ def debug_interaction(debug_data, env, cont):
                     continue
             debug_data.command = cmd
             if cmd == ",c":
+                cont_hooks.clear()
+                del debug_hooks[:]
                 primitive.debug(False)
                 break
             elif cmd == ",s":
                 break
             elif cmd == ",n":
                 debug_data.skip = True
+                debug_hooks.append(NDebugHook(cont, debug_data))
                 break
             elif cmd == ",e":
                 print_bindings(env, recursive=False)

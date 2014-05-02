@@ -13,10 +13,19 @@ import primitive
 def empty_environment():
     return kt.Environment([], {})
 
-_ground_env = kt.Environment([], primitive.exports)
-
 def standard_environment():
     return kt.Environment([_ground_env], {})
+
+def extended_environment():
+    return kt.Environment([_extended_env], {})
+
+def print_bindings(env, recursive=False, indent=0):
+    for k, v in env.bindings.iteritems():
+        print "    " * indent, k, ":", v.tostring()
+    if recursive:
+        for parent in env.parents:
+            print " ---"
+            print_bindings(parent, True, indent+1)
 
 def run_one_expr(val, env, ignore_debug=False):
     cont = kt.TerminalCont()
@@ -41,6 +50,10 @@ def run_one_expr(val, env, ignore_debug=False):
                             break
                         elif cmd == ",s":
                             break
+                        elif cmd == ",e":
+                            print_bindings(env, recursive=False)
+                        elif cmd == ",E":
+                            print_bindings(env, recursive=True)
                         else:
                             dbgexprs = parse.parse(cmd)
                             for dbgexpr in dbgexprs.data:
@@ -108,15 +121,18 @@ def load(filename, env):
         run_one_expr(expr, env)
 
 def run(args):
-    env = standard_environment()
+    env = extended_environment()
     _, filename = args
-    load("kernel.k", env)
-    load("extension.k", env)
     load(filename, env)
     return 0
 
 def test():
     run(["_", "test.k"])
+
+_ground_env = kt.Environment([], primitive.exports)
+load("kernel.k", _ground_env)
+_extended_env = kt.Environment([_ground_env], {})
+load("extension.k", _extended_env)
 
 if __name__ == '__main__':
     run(sys.argv)

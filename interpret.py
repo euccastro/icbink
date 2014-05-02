@@ -27,18 +27,29 @@ def print_bindings(env, recursive=False, indent=0):
             print " ---"
             print_bindings(parent, True, indent+1)
 
-def run_one_expr(val, env, ignore_debug=False):
+def run_one_expr(val,
+                 env,
+                 filename=None,
+                 source_lines=None,
+                 ignore_debug=False):
     cont = kt.TerminalCont()
     try:
         while True:
             if (not ignore_debug
                 and primitive.debug_mode()
                 and val.source_pos is not None):
-                print "line", val.source_pos.lineno,
-                print ", col", val.source_pos.columnno
-                # XXX: optionally take source filename so we can show the line
-                # instead
-                print val.tostring()
+                print
+                if filename is not None:
+                    print ("%s," % filename),
+                # Editors show 1-based line and column numbers, while
+                # source_pos objects are 0-based.
+                print "line %s, column %s" % (val.source_pos.lineno + 1,
+                                              val.source_pos.columnno + 1)
+                if source_lines is None:
+                    print val.tostring()
+                else:
+                    print source_lines[val.source_pos.lineno]
+                    print "%s^" % (" " * val.source_pos.columnno)
                 try:
                     while True:
                         os.write(1, "> ")
@@ -54,11 +65,15 @@ def run_one_expr(val, env, ignore_debug=False):
                             print_bindings(env, recursive=False)
                         elif cmd == ",E":
                             print_bindings(env, recursive=True)
+                        elif cmd == ",q":
+                            raise SystemExit
                         else:
                             dbgexprs = parse.parse(cmd)
                             for dbgexpr in dbgexprs.data:
                                 dbg_val = run_one_expr(dbgexpr,
                                                        env,
+                                                       filename,
+                                                       source_lines,
                                                        ignore_debug=True)
                                 print dbg_val.tostring()
                 except EOFError:
@@ -116,9 +131,10 @@ def test():
 
 def load(filename, env):
     src = open(filename).read()
+    src_lines = src.split("\n")
     program = parse.parse(src)
     for expr in program.data:
-        run_one_expr(expr, env)
+        run_one_expr(expr, env, filename=filename, source_lines=src_lines)
 
 def run(args):
     env = extended_environment()

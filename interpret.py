@@ -37,14 +37,13 @@ def run_one_expr(val,
     try:
         while True:
             if val.source_pos is not None:
-                debug_data.latest_source_pos = val.source_pos
+                debug_data.source_pos = val.source_pos
             if (not ignore_debug
                 and primitive.debug_mode()
                 and val.source_pos is not None):
-                cont = kt.DebugWrapCont(val.tostring(), cont)
                 print
-                debug_data.latest_source_pos.print_()
-                debug_interaction(val, env, debug_data)
+                debug_data.source_pos.print_()
+                debug_interaction(debug_data, env, cont)
             driver.jit_merge_point(val=val, env=env, cont=cont)
             primitive.trace(":: interpreting ", val.tostring())
             try:
@@ -54,31 +53,70 @@ def run_one_expr(val,
                 #XXX: find out how to print (something like a) Python traceback
                 #     in RPython
                 print "*** ERROR *** :", repr(e), e.message
-                debug_data.latest_source_pos.print_()
-                debug_interaction(val, env, debug_data)
+                debug_data.source_pos.print_()
+                debug_interaction(debug_data, env, cont)
     except kt.Done as e:
         return e.value
 
 class DebugData:
-    def __init__(self):
-        self.latest_source_pos = None
-        self.latest_command = None
+    def __init__(self, source_pos=None, command=None, skip=False):
+        self.source_pos = source_pos
+        self.command = command
+        self.skip = skip
 
-def debug_interaction(val, env, debug_data):
+class DebugHook(object):
+    def trigger(self, val, cont):
+        raise NotImplementedError
+
+cont_hooks = {}
+
+class ReturnDebugHook(DebugHook):
+    def trigger(self, cont, val):
+        try:
+            source_pos, debug_data, env = cont_hooks[cont]
+        except KeyError:
+            return
+        if debug_data.skip:
+            return
+        print
+        source_pos.print_()
+        print "<< returns", val.tostring()
+        debug_interaction(DebugData(source_pos,
+                                    debug_data.command,
+                                    debug_data.skip),
+                          env,
+                          cont)
+
+debug_hooks = [ReturnDebugHook()]
+
+def return_hook_callback(val, cont):
+    if primitive.debug_mode():
+        for hook in debug_hooks:
+            hook.trigger(val, cont)
+
+kt.return_hook.callback = return_hook_callback
+
+def debug_interaction(debug_data, env, cont):
+    if debug_data.skip:
+        return
     try:
         while True:
             os.write(1, "> ")
+            cont_hooks[cont] = debug_data.source_pos, debug_data, env
             cmd = readline()
             if cmd == "":
-                if debug_data.latest_command is not None:
-                    cmd = debug_data.latest_command
+                if debug_data.command is not None:
+                    cmd = debug_data.command
                 else:
                     continue
-            debug_data.latest_command = cmd
+            debug_data.command = cmd
             if cmd == ",c":
-                primitive.debug_off()
+                primitive.debug(False)
                 break
             elif cmd == ",s":
+                break
+            elif cmd == ",n":
+                debug_data.skip = True
                 break
             elif cmd == ",e":
                 print_bindings(env, recursive=False)
@@ -95,9 +133,10 @@ def debug_interaction(val, env, debug_data):
                                            ignore_debug=True)
                     print dbg_val.tostring()
     except EOFError:
-        primitive.debug_off()
+        primitive.debug(False)
 
-#XXX adapted from Mariano Guerra's plang; research whether there's equivalent functionality in rlib.
+#XXX adapted from Mariano Guerra's plang; research whether there's equivalent
+#    functionality in rlib.
 def readline():
     result = []
     while True:
@@ -120,7 +159,6 @@ def get_printable_location(green_val):
 driver = jit.JitDriver(reds=['env', 'cont'],
                        greens=['val'],
                        get_printable_location=get_printable_location)
-
 
 def keval(expr_str, env):
     expr, = parse.parse(expr_str).data

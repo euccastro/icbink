@@ -233,6 +233,7 @@
         ($lambda #ignore
           (apply-continuation (eval b env) #inert))))))
 
+#;
 ($t/t "simplest tracing guard"
   ("enter child")
   "x"
@@ -272,7 +273,7 @@
   ("a" "b")
   (($lambda (x . y) (list x y)) "a" . "b"))
 
-#;($sequence
+($sequence
   (debug-on)
   (print (string-append "a" "b"))
   (debug-off))

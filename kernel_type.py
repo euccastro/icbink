@@ -291,6 +291,9 @@ class Continuation(KernelValue):
         self.source_pos = source_pos
     def plug_reduce(self, val):
         trace(":: plugging", val.tostring())
+        return_hook.callback(self, val)
+        return self._plug_reduce(val)
+    def _plug_reduce(self, val):
         return self.prev.plug_reduce(val)
     def mark(self, boolean):
         self.marked = boolean
@@ -309,7 +312,7 @@ class TerminalCont(Continuation):
     def __init__(self, source_pos=None):
         Continuation.__init__(self, None)
         self.source_pos = source_pos
-    def plug_reduce(self, val):
+    def _plug_reduce(self, val):
         raise Done(val)
 
 def evaluate_arguments(vals, env, cont):
@@ -324,7 +327,7 @@ class EvalArgsCont(Continuation):
         self.exprs = exprs
         self.env = env
         self.source_pos = source_pos
-    def plug_reduce(self, val):
+    def _plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         return evaluate_arguments(self.exprs,
                                   self.env,
@@ -335,7 +338,7 @@ class GatherArgsCont(Continuation):
         Continuation.__init__(self, prev)
         self.val = val
         self.source_pos = source_pos
-    def plug_reduce(self, val):
+    def _plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         return self.prev.plug_reduce(Pair(self.val, val))
 
@@ -345,7 +348,7 @@ class ApplyCont(Continuation):
         self.combiner = combiner
         self.env = env
         self.source_pos = source_pos
-    def plug_reduce(self, args):
+    def _plug_reduce(self, args):
         trace(":: plugging", args.tostring())
         return self.combiner.combine(args, self.env, self.prev)
 
@@ -355,9 +358,15 @@ class CombineCont(Continuation):
         self.operands = operands
         self.env = env
         self.source_pos = source_pos
-    def plug_reduce(self, val):
+    def _plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         return val.combine(self.operands, self.env, self.prev)
+
+class ReturnHook(object):
+    def __init__(self):
+        self.callback = None
+
+return_hook = ReturnHook()
 
 class GuardCont(Continuation):
     def __init__(self, guards, env, prev, source_pos=None):
@@ -372,7 +381,7 @@ class SequenceCont(Continuation):
         self.exprs = exprs
         self.env = env
         self.source_pos = source_pos
-    def plug_reduce(self, val):
+    def _plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         return sequence(self.exprs, self.env, self.prev)
 
@@ -390,7 +399,7 @@ class IfCont(Continuation):
         self.alternative = alternative
         self.env = env
         self.source_pos = source_pos
-    def plug_reduce(self, val):
+    def _plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         if is_true(val):
             return self.consequent, self.env, self.prev
@@ -406,7 +415,7 @@ class CondCont(Continuation):
         self.env = env
         self.prev = prev
         self.source_pos = source_pos
-    def plug_reduce(self, val):
+    def _plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         if is_true(val):
             return sequence(cdar(self.clauses), self.env, self.prev)
@@ -424,7 +433,7 @@ class DefineCont(Continuation):
         self.definiend = definiend
         self.env = env
         self.source_pos = source_pos
-    def plug_reduce(self, val):
+    def _plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         match_parameter_tree(self.definiend, val, self.env)
         return self.prev.plug_reduce(inert)
@@ -459,7 +468,7 @@ class InterceptCont(Continuation):
         self.interceptor = interceptor.wrapped_combiner
         self.source_pos = source_pos
 
-    def plug_reduce(self, val):
+    def _plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         outer_cont = self.prev
         return self.interceptor.combine(
@@ -474,17 +483,9 @@ class ExtendCont(Continuation):
         self.receiver = receiver.wrapped_combiner
         self.env = env
         self.source_pos = source_pos
-    def plug_reduce(self, val):
+    def _plug_reduce(self, val):
         trace(":: plugging", val.tostring())
         return self.receiver.combine(val, self.env, self.prev)
-
-class DebugWrapCont(Continuation):
-    def __init__(self, header, prev):
-        Continuation.__init__(self, prev)
-        self.header = header
-    def plug_reduce(self, val):
-        print "<<", self.header, "returns", val.tostring()
-        return Continuation.plug_reduce(self, val)
 
 def car(val):
     assert isinstance(val, Pair)

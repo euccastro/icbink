@@ -1,7 +1,26 @@
 Make a basic interpreter:
-    debugger: enter to repeat last command
     implement ,n (and ,r?)
-    BUG: I really need to track source filename in source_pos
+        #XXX: pequeno desfasse: parece que estou mostrando a posiçom errada (o primeiro
+              elemento dũa combinaçom, e nom o paréntese.
+        tamém tenho que infectar todas as continuations.  Portanto acabava antes metendo o
+        código no default e em todas.
+        add 'return hook' (and perhaps 'escape hook'?) to kt, so applyCont (combinecont?)
+        can trigger it.
+        what are ,n and ,r supposed to do on escape?
+        XXX: what is ,n supposed to do in a plug_reduce context?
+            same as ,r?
+                and what does ,r do?
+                returns to the closest enclosing application?
+                    and how do we intercept there after the fact, without mutating the
+                    continuation tree?
+                        all plug_reduces have a check for debug?
+                            maybe we only need combinator plug_reduces
+                                ApplyCont or CombineCont?
+                                    Si, potencialmente quero seguir escapando a contextos nos que nunca debuguei in first place.
+                quando fazemos um salto nom desativamos debug, apenas instalamos um guard.
+                esse guard sabe saltar os contextos nom interessantes.
+            well, it can still infect the continuation it's about to return to
+                infinite loop?  that's the continuation we infected in first place!
     Do Guarded continuations pretty early, because that's where I perceive the biggest risk and complication, and it may be traumatic to retrofit later on
         Test (building everything needed in the process)
         Guarded continuation-based exception handling.

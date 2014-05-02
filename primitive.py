@@ -227,9 +227,6 @@ def _debug_off(val):
     assert kt.nil.equal(val)
     return debug(False)
 
-def debug_off():
-    _debug.debug = False
-
 def debug_mode():
     return _debug.debug
 

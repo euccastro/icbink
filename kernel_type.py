@@ -160,7 +160,10 @@ class Pair(KernelValue):
         s.append(")")
         return s.build()
     def interpret(self, env, cont):
-        return self.car, env, CombineCont(self.cdr, env, cont)
+        return self.car, env, CombineCont(self.cdr,
+                                          env,
+                                          cont,
+                                          source_pos=self.source_pos)
     def equal(self, other):
         return (isinstance(other, Pair)
                 and self.car.equal(other.car)

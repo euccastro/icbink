@@ -1,4 +1,73 @@
 Make a basic interpreter:
+    debugger in the face of abnormal passes?
+
+    whenever we evaluate a pair, we link the RECEIVING continuation with the pair (or at least with its source info)
+
+    a plan for ,r:
+        at any given moment, the closest continuation with an associated pair is the one we return to.
+
+    for ,n:
+        we resume on the continuation that is prev to our current one
+            so, just cont?
+    for ,s:
+        we stop in the next iteration of the eval loop that has a source
+
+    for ,b:
+        we stop when the source has a source_info with a line equal to the breakpoint
+
+    when we jump out of the dynamic extent of one of the continuations above, do we want to capture the jump?
+        maybe we want to have a different method per monitor type
+        .on_eval(env, val, cont)
+        .on_plug_reduce(val, cont)
+        .on_abnormal_pass(val, [src, ..., dst])  <- we have already built the list so we might as well provide it
+
+    DebugMonitor()
+        StepDebugMonitor()
+        LeapDebugMonitor()
+        ReturnDebugMonitor()
+        BreakpointDebugMonitor(condition=<Predicate>)
+
+    a generic plan:
+        debug_state has a list of functions that take a (val, env, cont) and return true whenever we should stop at the given triple.
+    story of a combination:
+        we interpret a pair
+        on interpretation, we evaluate the car, with a CombineCont continuation
+        the prev of the CombineCont is the continuation that is expecting the value
+            but it doesn't have the right source info because it corresponds to 'upper' in the code
+        we may be interested in returning to this place from a continuation where we are
+            evaluating the arguments
+            evaluating the body of the operative
+        CombineCont calls combine on the first arg on plug_reduce *and its own prev expression as the prev*.
+            THEREFORE, THE COMBINECONT ITSELF IS NOT REACHABLE ANYMORE!
+            The combiner of a primitive operative is not very interesting; just calls primitive code
+            The combiner of a compound operative builds the right environment and calls `sequence` (again, on the continuation previous to the combinecont)
+            The combiner of an applicative calls evaluate_arguments with an ApplyCont child of the prev.
+                def evaluate_arguments(vals, env, cont):
+                    if isinstance(vals, Pair):
+                        return vals.car, env, EvalArgsCont(vals.cdr, env, cont)
+                    else:
+                        return vals, env, cont
+                EvalArgsCont, in turn, calls evaluate_arguments with a GatherArgsCont
+
+    Use applycont in addition to combineconts:
+        their prev will get the result of the combination anyway
+        indeed, only applyconts evaluate their arguments.
+    trace what happens when we:
+        run an applicative
+        define an applicative
+        run an operative
+        define an operative
+
+        draw the continuation tree at all points.  see how we would go about
+            ,n
+            ,r
+            ,b
+        on ,r just watch for the return from 
+    copy the source_pos in interpretation
+        unless there was already a source_pos in the object
+        so far we only need them in applycont and combinecont
+    We find a combinecont, but nothing guarantees us that it's the closest one. :/
+        We really need to keep a stack of some sort.  The continuation hierarchy isn't.
     implement ,n (and ,r?)
         #XXX: pequeno desfasse: parece que estou mostrando a posiçom errada (o primeiro
               elemento dũa combinaçom, e nom o paréntese.

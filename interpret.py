@@ -74,23 +74,41 @@ class ReturnDebugHook(DebugHook):
             source_pos, debug_data, env = cont_hooks[cont]
         except KeyError:
             return
-        if debug_data.skip:
-            return
         print
         print "<< returns", val.tostring()
+        if debug_data.skip:
+            return
         debug_interaction(DebugData(source_pos,
                                     debug_data.command,
                                     debug_data.skip),
                           env,
                           cont)
 
-class NDebugHook(DebugHook):
+class ResumeDebugHook(DebugHook):
     def __init__(self, cont, debug_data):
         self.cont = cont
         self.debug_data = debug_data
     def trigger(self, cont, val):
         if cont is self.cont:
+            print "matched cont!", cont
             self.debug_data.skip = False
+
+class ResumeOnContainingCombineDebugHook(DebugHook):
+    def __init__(self, cont, debug_data):
+        self.cont = cont
+        self.debug_data = debug_data
+    def trigger(self, cont, val):
+        if isinstance(cont, kt.CombineCont):
+            c = cont
+            while True:
+                if c is None:
+                    print "found combinecont!", cont, cont.prev
+                    debug_hooks[debug_hooks.index(self)] = ResumeDebugHook(
+                            cont.prev, self.debug_data)
+                    return
+                elif c is self.cont:
+                    return
+                c = c.prev
 
 debug_hooks = []
 
@@ -128,7 +146,11 @@ def debug_interaction(debug_data, env, cont):
                 break
             elif cmd == ",n":
                 debug_data.skip = True
-                debug_hooks.append(NDebugHook(cont, debug_data))
+                debug_hooks.append(ResumeDebugHook(cont, debug_data))
+                break
+            elif cmd == ",r":
+                debug_data.skip = True
+                debug_hooks.append(ResumeOnContainingCombineDebugHook(cont, debug_data))
                 break
             elif cmd == ",e":
                 print_bindings(env, recursive=False)

@@ -28,13 +28,13 @@ def export(name, simple=True):
 def string_append(vals):
     s = rstring.StringBuilder()
     for v in kt.iter_list(vals):
-        assert isinstance(v, kt.String)
+        kt.check_type(v, kt.String)
         s.append(v.value)
     return kt.String(s.build())
 
 @export('continuation->applicative')
 def continuation2applicative(vals):
-    cont, = kt.pythonify_list(vals)
+    cont, = kt.pythonify_list(vals, 1)
     assert isinstance(cont, kt.Continuation)
     return kt.Applicative(kt.ContWrapper(cont))
 
@@ -218,18 +218,14 @@ def _debug_off(val):
     debug.stop_stepping()
     return kt.inert
 
-def kernel_eval(val, env):
-    cont = kt.TerminalCont()
-    try:
-        while True:
-            driver.jit_merge_point(val=val, env=env, cont=cont)
-            debug.on_eval(val, env, cont)
-            try:
-                val, env, cont = val.interpret(env, cont)
-            except kt.KernelError as e:
-                debug.on_error(e, val, env, cont)
-    except kt.Done as e:
-        return e.value
+def kernel_eval(val, env, cont):
+    while True:
+        driver.jit_merge_point(val=val, env=env, cont=cont)
+        debug.on_eval(val, env, cont)
+        try:
+            val, env, cont = val.interpret(env, cont)
+        except kt.ErrorObject as e:
+            val, env, cont = kt.abnormally_pass(e, cont, e.dest_cont)
 
 def get_printable_location(green_val):
     if green_val is None:
@@ -241,12 +237,25 @@ driver = jit.JitDriver(reds=['env', 'cont'],
                        greens=['val'],
                        get_printable_location=get_printable_location)
 
-def load(path, env):
+class AdHocException(Exception):
+    def __init__(self, val):
+        self.val = val
+
+class AdHocContinuation(kt.Continuation):
+    def _plug_reduce(self, val):
+        raise AdHocException(val)
+
+def load(path, env, cont=None):
+    if cont is None:
+        cont = AdHocContinuation(kt.root_cont)
     src = open(path).read()
     src_lines = src.split("\n")
     program = kt.Pair(_ground_env.bindings['$sequence'],
                       parse.parse(src, path))
-    kernel_eval(program, env)
+    try:
+        return kernel_eval(program, env, cont)
+    except AdHocException as e:
+        return e.val
 
 def check_guards(guards):
     for guard in kt.iter_list(guards):
@@ -264,20 +273,21 @@ def make_pred(cls, name):
         return kt.true
     return kt.Applicative(kt.SimplePrimitive(pred, name))
 
-for name in ['boolean',
-             'symbol',
-             'inert',
-             'pair',
-             'null',
-             'environment',
-             'ignore',
-             'operative',
-             'applicative',
-             'combiner',
-             'string']:
-    cls = getattr(kt, name.capitalize())
-    kernel_name = name + "?"
-    _exports[kernel_name] = make_pred(cls, kernel_name)
+for cls in [kt.Boolean,
+            kt.Symbol,
+            kt.Inert,
+            kt.Pair,
+            kt.Null,
+            kt.Environment,
+            kt.Ignore,
+            kt.Operative,
+            kt.Applicative,
+            kt.Combiner,
+            kt.String,
+            kt.ErrorObject]:
+    pred_name = cls.type_name + "?"
+    _exports[pred_name] = make_pred(cls, pred_name)
+del pred_name, cls
 
 def empty_environment():
     return kt.Environment([], {})
@@ -287,6 +297,15 @@ def standard_environment():
 
 def extended_environment():
     return kt.Environment([_extended_env], {})
+
+_exports['root-continuation'] = kt.root_cont
+_exports['error-continuanion'] = kt.error_cont
+_exports['system-error-continuation'] = kt.system_error_cont
+_exports['user-error-continuation'] = kt.user_error_cont
+_exports['type-error-continuation'] = kt.type_error_cont
+_exports['operand-mismatch-continuation'] = kt.operand_mismatch_cont
+_exports['arity-mismatch-continuation'] = kt.arity_mismatch_cont
+_exports['symbol-not-found-continuation'] = kt.symbol_not_found_cont
 
 _ground_env = kt.Environment([], _exports)
 load("kernel.k", _ground_env)

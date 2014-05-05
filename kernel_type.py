@@ -6,15 +6,6 @@ from rpython.rlib import rstring
 import debug
 
 
-class KernelError(Exception):
-    def __init__(self, msg):
-        self.message = msg
-    def __str__(self):
-        return self.message
-
-class KernelTypeError(KernelError):
-    pass
-
 class KernelValue(object):
     simple = True
     def __init__(self, source_pos=None):
@@ -36,6 +27,7 @@ class KernelValue(object):
 #XXX: Unicode
 class String(KernelValue):
     _immutable_fields_ = ['value']
+    type_name = 'string'
     def __init__(self, value, source_pos=None):
         assert isinstance(value, str), "wrong value for String: %s" % value
         self.value = value
@@ -52,6 +44,7 @@ class String(KernelValue):
 class Symbol(KernelValue):
 
     _immutable_fields_ = ['value']
+    type_name = 'symbol'
 
     def __init__(self, value, source_pos=None):
         assert isinstance(value, str), "wrong value for Symbol: %s" % value
@@ -78,6 +71,7 @@ def get_interned(name):
         return ret
 
 class Null(KernelValue):
+    type_name = 'null'
     @jit.elidable
     def tostring(self):
         return "()"
@@ -90,6 +84,7 @@ def is_nil(kv):
     return isinstance(kv, Null)
 
 class Ignore(KernelValue):
+    type_name = 'ignore'
     @jit.elidable
     def tostring(self):
         return '#ignore'
@@ -102,6 +97,7 @@ def is_ignore(kv):
     return ignore.equal(kv)
 
 class Inert(KernelValue):
+    type_name = 'inert'
     @jit.elidable
     def tostring(self):
         return '#inert'
@@ -114,6 +110,7 @@ def is_inert(kv):
     return inert.equal(kv)
 
 class Boolean(KernelValue):
+    type_name = 'boolean'
     _immutable_fields_ = ['value']
     def __init__(self, value, source_pos=None):
         assert isinstance(value, bool), "wrong value for Boolean: %s" % value
@@ -135,6 +132,7 @@ def is_false(kv):
     return false.equal(kv)
 
 class Pair(KernelValue):
+    type_name = 'pair'
     _immutable_fields_ = ['car', 'cdr']
     simple = False
     def __init__(self, car, cdr, source_pos=None):
@@ -172,10 +170,12 @@ class Pair(KernelValue):
                 and self.cdr.equal(other.cdr))
 
 class Combiner(KernelValue):
+    type_name = 'combiner'
     def combine(self, operands, env, cont):
         raise NotImplementedError
 
 class Operative(Combiner):
+    type_name = 'operative'
     pass
 
 class CompoundOperative(Operative):
@@ -254,6 +254,7 @@ def select_interceptors(cont, cls):
     return ls
 
 class Applicative(Combiner):
+    type_name = 'applicative'
     def __init__(self, combiner, source_pos=None):
         #XXX: rename to wrapped_combiner
         assert isinstance(combiner, Combiner), "wrong type to wrap: %s" % combiner
@@ -266,15 +267,9 @@ class Applicative(Combiner):
     def tostring(self):
         return "<applicative %s>" % self.wrapped_combiner.tostring()
 
-class NotFound(KernelError):
-    _immutable_vars_ = ['val']
-    def __init__(self, val):
-        assert isinstance(val, str), "trying to find non-string: %s" % val
-        self.val = val
-    def __str__(self):
-        return "Symbol not found: %s" % self.val
 
 class Environment(KernelValue):
+    type_name = 'environment'
     def __init__(self, parents, bindings=None, source_pos=None):
         self.parents = parents
         self.bindings = bindings or {}
@@ -294,9 +289,10 @@ class Environment(KernelValue):
                     return ret
                 except NotFound:
                     pass
-            raise NotFound(symbol.value)
+            raise NotFound(symbol)
 
 class Continuation(KernelValue):
+    type_name = 'continuation'
     _immutable_args_ = ['prev']
     def __init__(self, prev, source_pos=None):
         self.prev = prev
@@ -312,16 +308,46 @@ class Continuation(KernelValue):
         if self.prev is not None:
             self.prev.mark(boolean)
 
-class Done(Exception):
-    def __init__(self, value):
-        self.value = value
-
-class TerminalCont(Continuation):
-    def __init__(self, source_pos=None):
+class RootCont(Continuation):
+    def __init__(self):
         Continuation.__init__(self, None)
-        self.source_pos = source_pos
+        self.source_pos = None
     def _plug_reduce(self, val):
-        raise Done(val)
+        raise KernelExit
+
+class BaseErrorCont(Continuation):
+    def _plug_reduce(self, val):
+        if not isinstance(val, KernelError):
+            print "*** ERROR ***:",
+        print val.todisplay()
+        return Continuation._plug_reduce(self, val)
+
+class TypeErrorCont(Continuation):
+    def _plug_reduce(self, val):
+        expected_type, actual_object = pythonify_list(val)
+        print ("*** TYPE ERROR ***: expected a %s, got %s instead."
+               % (expected_type, actual_object.tostring()))
+        return error_cont.plug_reduce(inert)
+
+class OperandMismatchCont(Continuation):
+    def _plug_reduce(self, val):
+        param_tree, operand_tree = pythonify_list(val)
+        print ("*** OPERAND MISMATCH ***: expected %s, got %s instead."
+               % (param_tree.tostring(), operand_tree.tostring()))
+        return error_cont.plug_reduce(inert)
+
+class ArityMismatchCont(Continuation):
+    def _plug_reduce(self, val):
+        expected_arity, actual_args = pythonify_list(val)
+        print ("*** ARITY MISMATCH ***: expected %s arguments, got %s instead."
+               % (expected_arity.todisplay(), actual_args.tostring()))
+        return error_cont.plug_reduce(inert)
+
+class SymbolNotFoundCont(Continuation):
+    def _plug_reduce(self, val):
+        symbol, = pythonify_list(val)
+        print "*** SYMBOL NOT FOUND ***: %s" % val
+        return error_cont.plug_reduce(inert)
 
 def evaluate_arguments(vals, env, cont):
     if isinstance(vals, Pair):
@@ -512,14 +538,86 @@ for length in range(2, 6):
                 ''.join('c%sr(' % each for each in absoup),
                 ''.join(')' for each in absoup)))
 
+# XXX: these don't feel like they belong in a kernel type module, but placing
+# them in primitive.py would create a cyclic dependency.
+root_cont = RootCont()
+error_cont = BaseErrorCont(root_cont)
+system_error_cont = Continuation(error_cont)
+user_error_cont = Continuation(error_cont)
+type_error_cont = Continuation(user_error_cont)
+operand_mismatch_cont = Continuation(type_error_cont)
+arity_mismatch_cont = Continuation(operand_mismatch_cont)
+symbol_not_found_cont = Continuation(user_error_cont)
+
+class ErrorObject(KernelValue):
+    type_name = 'error-object'
+    dest_cont = error_cont
+    def __init__(self, message, irritants):
+        check_type(message, String)
+        if not is_nil(irritants):
+            check_type(irritants, Pair)
+        self.message = message
+        self.irritants = irritants
+    def todisplay(self):
+        return "*** ERROR ***: %s" % self.message.todisplay()
+
+class UserError(ErrorObject):
+    dest_cont = user_error_cont
+
+class SystemError(ErrorObject):
+    dest_cont = system_error_cont
+
+class NotFound(UserError):
+    dest_cont = symbol_not_found_cont
+    def __init__(self, symbol):
+        check_type(symbol, Symbol)
+        message = "Symbol '%s' not found" % symbol.todisplay()
+        irritants = Pair(symbol, nil)
+        KernelError.__init__(self, message, irritants)
+        self.dest_cont = symbol_not_found_cont
+
+class KernelTypeError(UserError):
+    dest_cont = type_error_cont
+    def __init__(self, expected_type, actual_value):
+        message = "Expected object of type %s, but got %s instead" % (
+                expected_type.type_name,
+                actual_value.tostring())
+        irritants = Pair(expected_type, Pair(actual_value, nil))
+        UserError.__init__(self, message, irritants)
+
+def check_type(val, type_):
+    if not isinstance(val, type_):
+        raise KernelTypeError(type_, val)
+
+class OperandMismatch(KernelTypeError):
+    def __init__(self, expected_params, actual_operands):
+        message = "%s doesn't match expected param tree %s" % (
+                actual_operands.tostring(),
+                expected_params.tostring())
+        irritants = Pair(expected_params, Pair(actual_operands, nil))
+        ErrorObject.__init__(self, message, irritants)
+
+class ArityMismatch(OperandMismatch):
+    def __init__(self, expected_arity, actual_arguments):
+        message = "expected %s arguments but got %s" % (
+                expected_arity.tostring(),
+                actual_arguments.tostring())
+        irritants = Pair(expected_arity, Pair(actual_arguments, nil))
+
+# XXX: Not an actual kernel type.
+class KernelExit(Exception):
+    pass
+
 def iter_list(vals):
     while isinstance(vals, Pair):
         yield vals.car
         vals = vals.cdr
     assert is_nil(vals), "non null list tail: %s" % vals
 
-def pythonify_list(vals):
+def pythonify_list(vals, check_arity=-1):
     ret = []
     for item in iter_list(vals):
         ret.append(item)
+    if check_arity != -1 and len(ret) != check_arity:
+        raise ArityError(check_arity, vals)
     return ret

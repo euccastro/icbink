@@ -1,4 +1,14 @@
 Error types:
+    port debugging
+        catch all errors, but don't exit
+        debugging executes in a continuation that is a child of the context we stopped in
+        the continuation includes guards for kernel-error-cont that just prints the error and continues execution
+        now, we don't get the destination continuation, so we can't polymorphically display the error message
+            make the throwable irritant contain the information on how to display the error?
+                that would simplify error handling, because error continuation would just display the irritant
+                so let's have an ErrorDescription class, that we can print out and query for its attributes
+                so why not use klisp's?
+    test errors
     XXX: source_pos, additional debugging info
     XXX: does the debugger run in the root continuation tree?
     Type error: a builtin expects a type (e.g. string) but gets a different, incompatible one

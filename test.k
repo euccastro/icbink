@@ -275,7 +275,7 @@
 
 ($sequence
   (debug-on)
-  (print (string-append "a" "b"))
+  (println (string-append "a" "b"))
   (debug-off))
 
 

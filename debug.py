@@ -11,13 +11,13 @@ class DebugHook(object):
 
 class StepHook(DebugHook):
     def on_eval(self, val, env, cont):
-        if val.source_pos:
+        if val.source_pos is not None:
             val.source_pos.print_()
         debug_interaction(env, cont)
     def on_plug_reduce(self, val, cont):
         if cont.source_pos is not None:
             cont.source_pos.print_()
-        print "<<< RETURN", val
+        print "<<< RETURN", val.tostring()
     def on_abnormal_pass(self,
                          val_tree,
                          src_cont,
@@ -37,7 +37,7 @@ class ResumeContHook(DebugHook):
         if cont is self.cont:
             if cont.source_pos is not None:
                 cont.source_pos.print_()
-            print "<<< RETURN", val
+            print "<<< RETURN", val.tostring()
             debug_interaction(self.env, cont)
     def on_abnormal_pass(self,
                          val_tree,
@@ -110,7 +110,7 @@ def debug_interaction(env, cont):
             elif cmd == ",r":
                 prev = cont.prev
                 while prev is not None and prev.source_pos is None:
-                    prev = cont.prev
+                    prev = prev.prev
                 if prev is None:
                     stop_stepping()
                 else:

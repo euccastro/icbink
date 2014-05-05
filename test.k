@@ -200,40 +200,42 @@
                       x)))))))
 
 ($define! build-cont-tree
-  ($lambda (tree)
-    ($let/cc cc
-      ($let ((tracing-guard (tracing-guard-builder cc)))
-        ($letrec
-          ((aux
-             ($lambda (parent-cont node)
-               ($cond
-                 ((symbol? node)
-                  (println "symbol:" node)
-                  (tracing-guard parent-cont (symbol->string node)))
-                 ((pair? node)
-                  (println "pair:" node)
-                  ($let ((new-parent (aux parent-cont (car node)))
-                         (cons new-parent
-                               (map1
-                                 ($lambda (child)
-                                   (aux new-parent child)))))))))))
-          (aux cc tree))))))
+  ($lambda (tree cc)
+    ($let ((tracing-guard (tracing-guard-builder cc)))
+      ($letrec
+        ((aux
+           ($lambda (parent-cont node)
+             ($cond
+               ((symbol? node)
+                (tracing-guard parent-cont (symbol->string node)))
+               ((pair? node)
+                ($let ((new-parent (aux parent-cont (car node))))
+                  (list*
+                    list
+                    new-parent
+                    (map1
+                      ($lambda (child)
+                        (aux new-parent child))
+                      (cdr node)))))))))
+        (aux cc tree)))))
 
 ($define! $with-tracing-guard-tree
   ($vau (tree . body) env
-    (eval (list* $let
-                 (list (list tree (build-cont-tree tree)))
-                 body)
-          env)))
+    ($let/cc cc
+      (eval (list* $let
+                   (list (list tree (build-cont-tree tree cc)))
+                   body)
+            env))))
 
-; won't work since we'll hit guards while trying to jump there.
-($define! $jump
-  ($vau (#ignore a #ignore b) env
+; note we'll hit entry guards to 'from'
+($define! jump
+  ($lambda (from to val-tree)
     (apply-continuation
       (extend-continuation
-        (eval a env)
-        ($lambda #ignore
-          (apply-continuation (eval b env) #inert))))))
+        from
+        ($lambda val-tree
+          (apply-continuation to val-tree)))
+      val-tree)))
 
 ($t/t "simplest tracing guard"
   ("enter child")
@@ -244,17 +246,21 @@
       (apply-continuation child-cont "x"))))
 
 
-#;($t/t "simple tracing guard"
-  ("exit right-child"
+($t/t "simple tracing guard"
+  ("enter base"
+   "enter right"
+   "enter right-child"
+   "exit right-child"
+   ; note we don't enter or exit `base` anymore
    "exit right"
    "enter left"
    "enter left-child")
-  #inert
+  "x"
   ($with-tracing-guard-tree
     (base
       (left left-child)
       (right right-child))
-    ($jump from right-child to left-child)))
+    (jump right-child left-child "x")))
 
 
 #;($t/t "right order of interceptions"

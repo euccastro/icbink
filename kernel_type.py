@@ -87,7 +87,7 @@ class Null(KernelValue):
 nil = Null()
 
 def is_nil(kv):
-    return nil.equal(kv)
+    return isinstance(kv, Null)
 
 class Ignore(KernelValue):
     @jit.elidable
@@ -155,7 +155,7 @@ class Pair(KernelValue):
                 pair = pair.cdr
                 s.append(" ")
             else:
-                if pair.cdr is not nil:
+                if not is_nil(pair.cdr):
                     s.append(" . ")
                     s.append(pair.cdr.tostring())
                 break
@@ -179,36 +179,49 @@ class Operative(Combiner):
     pass
 
 class CompoundOperative(Operative):
-    def __init__(self, formals, eformal, exprs, static_env, source_pos=None):
+    def __init__(self, formals, eformal, exprs, static_env, source_pos=None, name=None):
         self.formals = formals
         self.eformal = eformal
         self.exprs = exprs
         self.static_env = static_env
         self.source_pos = source_pos
+        self.name = name
     def combine(self, operands, env, cont):
         eval_env = Environment([self.static_env])
         match_parameter_tree(self.formals, operands, eval_env)
         match_parameter_tree(self.eformal, env, eval_env)
         return sequence(self.exprs, eval_env, cont)
+    def tostring(self):
+        if self.name is None:
+            return str(self)
+        else:
+            return "<operative '%s'>" % self.name
 
 class Primitive(Operative):
-    def __init__(self, code):
+    def __init__(self, code, name):
         self.code = code
         self.source_pos = None
+        self.name = name
     def combine(self, operands, env, cont):
         return self.code(operands, env, cont)
+    def tostring(self):
+        return "<primitive '%s'>" % self.name
 
 class SimplePrimitive(Operative):
-    def __init__(self, code):
+    def __init__(self, code, name):
         self.code = code
         self.source_pos = None
+        self.name = name
     def combine(self, operands, env, cont):
         return cont.plug_reduce(self.code(operands))
+    def tostring(self):
+        return "<primitive '%s'>" % self.name
 
 class ContWrapper(Operative):
     def __init__(self, cont, source_pos=None):
         self.cont = cont
         self.source_pos = source_pos
+        self.name = None
     def combine(self, operands, env, cont):
         return abnormally_pass(operands, cont, self.cont)
 
@@ -250,6 +263,8 @@ class Applicative(Combiner):
         return evaluate_arguments(operands,
                                   env,
                                   ApplyCont(self.wrapped_combiner, env, cont))
+    def tostring(self):
+        return "<applicative %s>" % self.wrapped_combiner.tostring()
 
 class Program(KernelValue):
     """Not a real Kernel value; just to keep RPython happy."""
@@ -318,7 +333,7 @@ class TerminalCont(Continuation):
 
 def evaluate_arguments(vals, env, cont):
     if isinstance(vals, Pair):
-        if isinstance(vals.cdr, Null):
+        if is_nil(vals.cdr):
             return vals.car, env, NoMoreArgsCont(env, cont)
         else:
             return vals.car, env, EvalArgsCont(vals.cdr, env, cont)
@@ -440,13 +455,18 @@ class DefineCont(Continuation):
 
 def match_parameter_tree(param_tree, operand_tree, env):
     if isinstance(param_tree, Symbol):
+        op = operand_tree
+        while isinstance(op, Applicative):
+            op = op.wrapped_combiner
+        if isinstance(op, Operative) and op.name is None:
+            op.name = param_tree.value
         env.set(param_tree, operand_tree)
     elif is_ignore(param_tree):
         pass
     elif is_nil(param_tree):
-        assert is_nil(operand_tree), "nil matched to: %s" % operand_tree
+        assert is_nil(operand_tree), "nil matched to: %s" % operand_tree.tostring()
     elif isinstance(param_tree, Pair):
-        assert isinstance(operand_tree, Pair), "pair matched to: %s" % operand_tree
+        assert isinstance(operand_tree, Pair), "pair %s matched to: %s" % (param_tree.tostring(), operand_tree.tostring())
         match_parameter_tree(param_tree.car, operand_tree.car, env)
         match_parameter_tree(param_tree.cdr, operand_tree.cdr, env)
 

@@ -14,9 +14,9 @@ def export(name, simple=True):
         simple = False
     def wrapper(fn):
         if simple:
-            comb = kt.SimplePrimitive(fn)
+            comb = kt.SimplePrimitive(fn, name)
         else:
-            comb = kt.Primitive(fn)
+            comb = kt.Primitive(fn, name)
         if not operative:
             comb = kt.Applicative(comb)
         exports[name] = comb
@@ -45,7 +45,7 @@ def guard_continuation(vals, env, cont):
     assert isinstance(cont_to_guard, kt.Continuation)
     outer_cont = kt.OuterGuardCont(entry_guards, env, cont_to_guard)
     inner_cont = kt.InnerGuardCont(exit_guards, env, outer_cont)
-    return cont.plug_reduce(inner_cont)
+    return inner_cont, env, cont
 
 @export('extend-continuation', simple=False)
 def extend_continuation(vals, env, cont):
@@ -58,8 +58,7 @@ def extend_continuation(vals, env, cont):
     assert isinstance(cont_to_extend, kt.Continuation)
     assert isinstance(receiver, kt.Applicative)
     assert isinstance(recv_env, kt.Environment)
-    return cont.plug_reduce(
-            kt.ExtendCont(receiver, recv_env, cont_to_extend))
+    return kt.ExtendCont(receiver, recv_env, cont_to_extend), env, cont
 
 @export('$sequence')
 def sequence(exprs, env, cont):
@@ -171,6 +170,11 @@ def call_with_cc(vals, env, cont):
     assert isinstance(applicative, kt.Applicative)
     return kt.Pair(applicative, kt.Pair(cont, kt.nil)), env, cont
 
+@export('symbol->string')
+def symbol2string(vals):
+    symbol, = kt.pythonify_list(vals)
+    assert isinstance(symbol, kt.Symbol)
+    return kt.String(symbol.value)
 
 # Not standard Kernel functions; for debugging only.
 
@@ -221,13 +225,13 @@ def check_guards(guards):
         assert isinstance(interceptor, kt.Applicative)
         assert isinstance(interceptor.wrapped_combiner, kt.Operative)
 
-def make_pred(cls):
+def make_pred(cls, name):
     def pred(vals):
         for val in kt.iter_list(vals):
             if not isinstance(val, cls):
                 return kt.false
         return kt.true
-    return kt.Applicative(kt.SimplePrimitive(pred))
+    return kt.Applicative(kt.SimplePrimitive(pred, name))
 
 for name in ['boolean',
              'symbol',
@@ -241,5 +245,6 @@ for name in ['boolean',
              'combiner',
              'string']:
     cls = getattr(kt, name.capitalize())
-    exports[name+"?"] = make_pred(cls)
+    kernel_name = name + "?"
+    exports[kernel_name] = make_pred(cls, kernel_name)
 

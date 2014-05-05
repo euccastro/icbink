@@ -1,7 +1,7 @@
 Make a basic interpreter:
     debugger in the face of abnormal passes?
 
-    whenever we evaluate a pair, we link the RECEIVING continuation with the pair (or at least with its source info)
+    whenever we evaluate a pair, we link the RECEIVING continuation with the pair (or at least with its source info) OK
 
     a plan for ,r:
         at any given moment, the closest continuation with an associated pair is the one we return to.

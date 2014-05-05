@@ -3,6 +3,8 @@ from itertools import product
 from rpython.rlib import jit
 from rpython.rlib import rstring
 
+import debug
+
 
 class KernelError(Exception):
     def __init__(self, msg):
@@ -24,18 +26,18 @@ class KernelValue(object):
     def todisplay(self):
         return self.tostring()
     def interpret(self, env, cont):
-        assert self.simple
+        assert self.simple, "expected simple value"
         return cont.plug_reduce(self.interpret_simple(env))
     def interpret_simple(self, env):
         return self
-    def combine(self, operands, env, cont):
+    def combine(self, operands, env, cont, source_pos=None):
         raise KernelTypeError("%s is not callable" % self.tostring())
 
 #XXX: Unicode
 class String(KernelValue):
     _immutable_fields_ = ['value']
     def __init__(self, value, source_pos=None):
-        assert isinstance(value, str)
+        assert isinstance(value, str), "wrong value for String: %r" % value
         self.value = value
         self.source_pos = source_pos
     @jit.elidable
@@ -52,7 +54,7 @@ class Symbol(KernelValue):
     _immutable_fields_ = ['value']
 
     def __init__(self, value, source_pos=None):
-        assert isinstance(value, str)
+        assert isinstance(value, str), "wrong value for Symbol: %r" % value
         self.value = value
         self.source_pos = source_pos
 
@@ -114,7 +116,7 @@ def is_inert(kv):
 class Boolean(KernelValue):
     _immutable_fields_ = ['value']
     def __init__(self, value, source_pos=None):
-        assert isinstance(value, bool)
+        assert isinstance(value, bool), "wrong value for Boolean: %r" % value
         self.value = value
         self.source_pos = source_pos
     @jit.elidable
@@ -137,8 +139,8 @@ class Pair(KernelValue):
     simple = False
     def __init__(self, car, cdr, source_pos=None):
         # XXX: specialize for performance?
-        assert isinstance(car, KernelValue)
-        assert isinstance(cdr, KernelValue)
+        assert isinstance(car, KernelValue), "non-KernelValue car: %r" % car
+        assert isinstance(cdr, KernelValue), "non-KernelValue cdr: %r" % cdr
         self.car = car
         self.cdr = cdr
         self.source_pos = source_pos
@@ -147,7 +149,7 @@ class Pair(KernelValue):
         s.append("(")
         pair = self
         while True:
-            assert isinstance(pair, Pair)
+            assert isinstance(pair, Pair), "not a pair: %r" % pair
             s.append(pair.car.tostring())
             if isinstance(pair.cdr, Pair):
                 pair = pair.cdr
@@ -170,7 +172,7 @@ class Pair(KernelValue):
                 and self.cdr.equal(other.cdr))
 
 class Combiner(KernelValue):
-    def combine(self, operands, env, cont):
+    def combine(self, operands, env, cont, source_pos=None):
         raise NotImplementedError
 
 class Operative(Combiner):
@@ -183,7 +185,9 @@ class CompoundOperative(Operative):
         self.exprs = exprs
         self.static_env = static_env
         self.source_pos = source_pos
-    def combine(self, operands, env, cont):
+    def combine(self, operands, env, cont, source_pos=None):
+        if cont.source_pos is None:
+            cont.source_pos = source_pos
         eval_env = Environment([self.static_env])
         match_parameter_tree(self.formals, operands, eval_env)
         match_parameter_tree(self.eformal, env, eval_env)
@@ -193,21 +197,25 @@ class Primitive(Operative):
     def __init__(self, code):
         self.code = code
         self.source_pos = None
-    def combine(self, operands, env, cont):
+    def combine(self, operands, env, cont, source_pos=None):
+        if cont.source_pos is None:
+            cont.source_pos = source_pos
         return self.code(operands, env, cont)
 
 class SimplePrimitive(Operative):
     def __init__(self, code):
         self.code = code
         self.source_pos = None
-    def combine(self, operands, env, cont):
+    def combine(self, operands, env, cont, source_pos=None):
+        if cont.source_pos is None:
+            cont.source_pos = source_pos
         return cont.plug_reduce(self.code(operands))
 
 class ContWrapper(Operative):
     def __init__(self, cont, source_pos=None):
         self.cont = cont
         self.source_pos = source_pos
-    def combine(self, operands, env, cont):
+    def combine(self, operands, env, cont, source_pos=None):
         return abnormally_pass(operands, cont, self.cont)
 
 def abnormally_pass(operands, src_cont, dst_cont):
@@ -222,6 +230,7 @@ def abnormally_pass(operands, src_cont, dst_cont):
         cont = InterceptCont(interceptor, cont, outer)
     for outer, interceptor in reversed(exiting):
         cont = InterceptCont(interceptor, cont, outer)
+    debug.on_abnormal_pass(operands, src_cont, dst_cont, exiting, entering)
     return cont.plug_reduce(operands)
 
 def select_interceptors(cont, cls):
@@ -240,10 +249,12 @@ def select_interceptors(cont, cls):
 class Applicative(Combiner):
     def __init__(self, combiner, source_pos=None):
         #XXX: rename to wrapped_combiner
-        assert isinstance(combiner, Combiner)
+        assert isinstance(combiner, Combiner), "wrong type to wrap: %r" % combiner
         self.wrapped_combiner = combiner
         self.source_pos = source_pos
-    def combine(self, operands, env, cont):
+    def combine(self, operands, env, cont, source_pos=None):
+        if cont.source_pos is None:
+            cont.source_pos = source_pos
         return evaluate_arguments(operands,
                                   env,
                                   ApplyCont(self.wrapped_combiner, env, cont))
@@ -259,7 +270,7 @@ class Program(KernelValue):
 class NotFound(KernelError):
     _immutable_vars_ = ['val']
     def __init__(self, val):
-        assert isinstance(val, str)
+        assert isinstance(val, str), "trying to find non-string: %r" % val
         self.val = val
     def __str__(self):
         return "Symbol not found: %s" % self.val
@@ -270,10 +281,10 @@ class Environment(KernelValue):
         self.bindings = bindings or {}
         self.source_pos = source_pos
     def set(self, symbol, value):
-        assert isinstance(symbol, Symbol)
+        assert isinstance(symbol, Symbol), "setting non-symbol: %r" % symbol
         self.bindings[symbol.value] = value
     def lookup(self, symbol):
-        assert isinstance(symbol, Symbol)
+        assert isinstance(symbol, Symbol), "looking up non-symbol: %r" % symbol
         try:
             ret = self.bindings[symbol.value]
             return ret
@@ -293,8 +304,7 @@ class Continuation(KernelValue):
         self.marked = False
         self.source_pos = source_pos
     def plug_reduce(self, val):
-        trace(":: plugging", val.tostring())
-        return_hook.callback(self, val)
+        debug.on_plug_reduce(val, self)
         return self._plug_reduce(val)
     def _plug_reduce(self, val):
         return self.prev.plug_reduce(val)
@@ -302,10 +312,6 @@ class Continuation(KernelValue):
         self.marked = boolean
         if self.prev is not None:
             self.prev.mark(boolean)
-
-def trace(*args):
-    import primitive
-    primitive.trace(*args)
 
 class Done(Exception):
     def __init__(self, value):
@@ -331,7 +337,6 @@ class EvalArgsCont(Continuation):
         self.env = env
         self.source_pos = source_pos
     def _plug_reduce(self, val):
-        trace(":: plugging", val.tostring())
         return evaluate_arguments(self.exprs,
                                   self.env,
                                   GatherArgsCont(val, self.prev))
@@ -342,7 +347,6 @@ class GatherArgsCont(Continuation):
         self.val = val
         self.source_pos = source_pos
     def _plug_reduce(self, val):
-        trace(":: plugging", val.tostring())
         return self.prev.plug_reduce(Pair(self.val, val))
 
 class ApplyCont(Continuation):
@@ -352,7 +356,6 @@ class ApplyCont(Continuation):
         self.env = env
         self.source_pos = source_pos
     def _plug_reduce(self, args):
-        trace(":: plugging", args.tostring())
         return self.combiner.combine(args, self.env, self.prev)
 
 class CombineCont(Continuation):
@@ -362,14 +365,7 @@ class CombineCont(Continuation):
         self.env = env
         self.source_pos = source_pos
     def _plug_reduce(self, val):
-        trace(":: plugging", val.tostring())
-        return val.combine(self.operands, self.env, self.prev)
-
-class ReturnHook(object):
-    def __init__(self):
-        self.callback = None
-
-return_hook = ReturnHook()
+        return val.combine(self.operands, self.env, self.prev, self.source_pos)
 
 class GuardCont(Continuation):
     def __init__(self, guards, env, prev, source_pos=None):
@@ -385,11 +381,10 @@ class SequenceCont(Continuation):
         self.env = env
         self.source_pos = source_pos
     def _plug_reduce(self, val):
-        trace(":: plugging", val.tostring())
         return sequence(self.exprs, self.env, self.prev)
 
 def sequence(exprs, env, cont):
-    assert isinstance(exprs, Pair)
+    assert isinstance(exprs, Pair), "non-pair sequence: %r" % exprs
     if is_nil(exprs.cdr):
         return exprs.car, env, cont
     else:
@@ -403,13 +398,12 @@ class IfCont(Continuation):
         self.env = env
         self.source_pos = source_pos
     def _plug_reduce(self, val):
-        trace(":: plugging", val.tostring())
         if is_true(val):
             return self.consequent, self.env, self.prev
         elif is_false(val):
             return self.alternative, self.env, self.prev
         else:
-            assert False
+            assert False, "not #t nor #f: %r" % val
 
 class CondCont(Continuation):
     def __init__(self, clauses, env, prev, source_pos=None):
@@ -419,7 +413,6 @@ class CondCont(Continuation):
         self.prev = prev
         self.source_pos = source_pos
     def _plug_reduce(self, val):
-        trace(":: plugging", val.tostring())
         if is_true(val):
             return sequence(cdar(self.clauses), self.env, self.prev)
         else:
@@ -437,7 +430,6 @@ class DefineCont(Continuation):
         self.env = env
         self.source_pos = source_pos
     def _plug_reduce(self, val):
-        trace(":: plugging", val.tostring())
         match_parameter_tree(self.definiend, val, self.env)
         return self.prev.plug_reduce(inert)
 
@@ -447,9 +439,9 @@ def match_parameter_tree(param_tree, operand_tree, env):
     elif is_ignore(param_tree):
         pass
     elif is_nil(param_tree):
-        assert is_nil(operand_tree)
+        assert is_nil(operand_tree), "nil matched to: %r" % operand_tree
     elif isinstance(param_tree, Pair):
-        assert isinstance(operand_tree, Pair)
+        assert isinstance(operand_tree, Pair), "pair matched to: %r" % operand_tree
         match_parameter_tree(param_tree.car, operand_tree.car, env)
         match_parameter_tree(param_tree.cdr, operand_tree.cdr, env)
 
@@ -467,12 +459,11 @@ class InterceptCont(Continuation):
         # instead.
         Continuation.__init__(self, outer_cont)
         self.next_cont = next_cont
-        assert isinstance(interceptor, Applicative)
+        assert isinstance(interceptor, Applicative), "non-applicative interceptor: %r" % interceptor
         self.interceptor = interceptor.wrapped_combiner
         self.source_pos = source_pos
 
     def _plug_reduce(self, val):
-        trace(":: plugging", val.tostring())
         outer_cont = self.prev
         return self.interceptor.combine(
                 Pair(val, Pair(Applicative(ContWrapper(outer_cont)), nil)),
@@ -482,19 +473,18 @@ class InterceptCont(Continuation):
 class ExtendCont(Continuation):
     def __init__(self, receiver, env, cont_to_extend, source_pos=None):
         Continuation.__init__(self, cont_to_extend)
-        assert isinstance(receiver, Applicative)
+        assert isinstance(receiver, Applicative), "non-applicative receiver: %r" % receiver
         self.receiver = receiver.wrapped_combiner
         self.env = env
         self.source_pos = source_pos
     def _plug_reduce(self, val):
-        trace(":: plugging", val.tostring())
         return self.receiver.combine(val, self.env, self.prev)
 
 def car(val):
-    assert isinstance(val, Pair)
+    assert isinstance(val, Pair), "car on non-pair: %r" % val
     return val.car
 def cdr(val):
-    assert isinstance(val, Pair)
+    assert isinstance(val, Pair), "cdr on non-pair: %r" % val
     return val.cdr
 
 # caar, cadr, ..., caadr, ..., cdddddr.
@@ -509,7 +499,7 @@ def iter_list(vals):
     while isinstance(vals, Pair):
         yield vals.car
         vals = vals.cdr
-    assert is_nil(vals)
+    assert is_nil(vals), "non null list tail: %r" % vals
 
 def pythonify_list(vals):
     ret = []

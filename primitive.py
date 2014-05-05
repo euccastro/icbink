@@ -2,6 +2,7 @@ from itertools import product
 
 from rpython.rlib import rstring
 
+import debug
 import kernel_type as kt
 
 
@@ -200,46 +201,16 @@ def test_error(val):
     raise TestError(val)
     return kt.inert
 
-class DebugStatus(object):
-    def __init__(self):
-        self.trace = False
-        self.debug = False
-        self.last_source_pos = None
-
-_debug = DebugStatus()
-
-def trace(*args):
-    if _debug.trace:
-        print " ".join(list(args))
-
-def debug(boolean):
-    assert isinstance(boolean, bool)
-    _debug.debug = boolean
-    return kt.inert
-
 @export('debug-on')
 def _debug_on(val):
     assert kt.nil.equal(val)
-    return debug(True)
+    debug.start_stepping()
+    return kt.inert
 
 @export('debug-off')
 def _debug_off(val):
     assert kt.nil.equal(val)
-    return debug(False)
-
-def debug_mode():
-    return _debug.debug
-
-@export('trace-on')
-def trace_on(val):
-    assert kt.nil.equal(val)
-    _debug.trace = True
-    return kt.inert
-
-@export('trace-off')
-def trace_off(val):
-    assert kt.nil.equal(val)
-    _debug.trace = False
+    debug.stop_stepping()
     return kt.inert
 
 def check_guards(guards):

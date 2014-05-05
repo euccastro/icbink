@@ -262,15 +262,6 @@
       (right right-child))
     (jump right-child left-child "x")))
 
-
-#;($t/t "right order of interceptions"
-  ($let/cc cc
-    ($let*
-      (($tracing-guard (tracing-guard-builder cc))
-       (base ($tracing-guard cc))
-       (left ($tracing-guard base))
-       (right ($tracing-guard base))))))
-
 ; I don't think this is Kernel semantics (e.g. read, in 4.10.5, "an applicative
 ; must have a list of operands", but is this cool or what?
 ($test "combine with non-list operand" "ha!" (($lambda x x) . "ha!"))

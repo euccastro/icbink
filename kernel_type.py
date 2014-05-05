@@ -326,7 +326,10 @@ class TerminalCont(Continuation):
 
 def evaluate_arguments(vals, env, cont):
     if isinstance(vals, Pair):
-        return vals.car, env, EvalArgsCont(vals.cdr, env, cont)
+        if isinstance(vals.cdr, Null):
+            return vals.car, env, NoMoreArgsCont(env, cont)
+        else:
+            return vals.car, env, EvalArgsCont(vals.cdr, env, cont)
     else:
         return vals, env, cont
 
@@ -340,6 +343,14 @@ class EvalArgsCont(Continuation):
         return evaluate_arguments(self.exprs,
                                   self.env,
                                   GatherArgsCont(val, self.prev))
+
+class NoMoreArgsCont(Continuation):
+    def __init__(self, env, prev, source_pos=None):
+        Continuation.__init__(self, prev)
+        self.env = env
+        self.source_pos = source_pos
+    def _plug_reduce(self, val):
+        return self.prev.plug_reduce(Pair(val, nil))
 
 class GatherArgsCont(Continuation):
     def __init__(self, val, prev, source_pos=None):

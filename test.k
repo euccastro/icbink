@@ -273,7 +273,8 @@
   ("a" "b")
   (($lambda (x . y) (list x y)) "a" . "b"))
 
-($sequence
+
+#;($sequence
   (debug-on)
   (println (string-append "a" "b"))
   (debug-off))

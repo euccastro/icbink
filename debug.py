@@ -1,7 +1,5 @@
 import os
 
-import parse
-
 
 class DebugHook(object):
     def on_eval(self, val, env, cont):
@@ -140,6 +138,7 @@ def debug_interaction(env, cont):
             elif cmd == ",q":
                 raise SystemExit
             else:
+                import parse
                 import primitive
                 dbgexprs = parse.parse(cmd)
                 old = _state.step_hook

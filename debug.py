@@ -105,7 +105,7 @@ def debug_interaction(env, cont):
                 start_stepping()
                 break
             elif cmd == ",n":
-                _state.hook = ResumeContHook(env, cont)
+                _state.step_hook = ResumeContHook(env, cont)
                 break
             elif cmd == ",r":
                 prev = cont.prev
@@ -120,7 +120,7 @@ def debug_interaction(env, cont):
                     else:
                         # Body of a compound operative.
                         resume_env, = env.parents
-                    _state.hook = ResumeContHook(resume_env, prev)
+                    _state.step_hook = ResumeContHook(resume_env, prev)
                 break
             elif cmd == ",e":
                 print_bindings(env, recursive=False)
@@ -165,10 +165,10 @@ def print_bindings(env, recursive=False, indent=0):
             print_bindings(parent, True, indent+1)
 
 def start_stepping():
-    _state.hook = step_hook
+    _state.step_hook = step_hook
 
 def stop_stepping():
-    _state.hook = None
+    _state.step_hook = None
 
 _state = DebugState()
 on_eval = _state.on_eval

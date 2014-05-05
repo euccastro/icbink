@@ -190,12 +190,14 @@
     ($lambda (cont name)
       (guard-continuation
         (list (list root-cont
-                    ($lambda #ignore
-                      (trace (string-append "enter " name)))))
+                    ($lambda (x intercept)
+                      (trace (string-append "enter " name))
+                      x)))
         cont
         (list (list root-cont
-                    ($lambda #ignore
-                      (trace (string-append "exit " name)))))))))
+                    ($lambda (x intercept)
+                      (trace (string-append "exit " name))
+                      x)))))))
 
 ($define! build-cont-tree
   ($lambda (tree)
@@ -233,14 +235,12 @@
         ($lambda #ignore
           (apply-continuation (eval b env) #inert))))))
 
-#;
 ($t/t "simplest tracing guard"
   ("enter child")
   "x"
-  (debug-on)
   ($let/cc cc
     ($let* ((build-tracing-guard (tracing-guard-builder cc))
-            (child-cont (build-tracing-guard "child" cc)))
+            (child-cont (build-tracing-guard cc "child")))
       (apply-continuation child-cont "x"))))
 
 

@@ -1,12 +1,19 @@
 import os
 
+import parse
+
 
 class DebugHook(object):
     def on_eval(self, val, env, cont):
         pass
     def on_plug_reduce(self, val, cont):
         pass
-    def on_abnormal_pass(self, val, path):
+    def on_abnormal_pass(self,
+                         val_tree,
+                         src_cont,
+                         dst_cont,
+                         exiting,
+                         entering):
         pass
 
 class StepHook(DebugHook):
@@ -48,16 +55,20 @@ class ResumeContHook(DebugHook):
                          exiting,
                          entering):
         #XXX: interact?
-        if self.cont in exiting:
-            print "*** EXITED THROUGH ABNORMAL PASS of %s from %s to %s" % (
-                    val_tree.tostring(),
-                    src_cont.tostring(),
-                    dst_cont.tostring())
-        elif self.cont in entering:
-            print "*** ENTERED THROUGH ABNORMAL PASS of %s from %s to %s" % (
-                    val_tree.tostring(),
-                    src_cont.tostring(),
-                    dst_cont.tostring())
+        for cont, interceptor in exiting:
+            if cont is self.cont:
+                print "*** EXITED THROUGH ABNORMAL PASS of %s from %s to %s" % (
+                        val_tree.tostring(),
+                        src_cont.tostring(),
+                        dst_cont.tostring())
+                break
+        else:
+            for cont, interceptor in entering:
+                if cont is self.cont:
+                    print "*** ENTERED THROUGH ABNORMAL PASS of %s from %s to %s" % (
+                            val_tree.tostring(),
+                            src_cont.tostring(),
+                            dst_cont.tostring())
 
 class DebugState(object):
     def __init__(self):
@@ -83,7 +94,7 @@ class DebugState(object):
                                             exiting,
                                             entering)
     def on_error(self, e, val, env, cont):
-        print "*** ERROR *** :", repr(e), e.message
+        print "*** ERROR *** :", e.message, e
         print "Trying to evaluate %s" % val.tostring()
         if val.source_pos:
             val.source_pos.print_()
@@ -131,15 +142,20 @@ def debug_interaction(env, cont):
             elif cmd == ",q":
                 raise SystemExit
             else:
+                import interpret
                 dbgexprs = parse.parse(cmd)
                 for dbgexpr in dbgexprs.data:
-                    dbg_val = run_one_expr(dbgexpr,
-                                           env,
-                                           debug_data,
-                                           ignore_debug=True)
-                    print dbg_val.tostring()
+                    old = _state.step_hook
+                    _state.step_hook = None
+                    try:
+                        dbg_val = interpret.run_one_expr(
+                                dbgexpr,
+                                env)
+                        print dbg_val.tostring()
+                    finally:
+                        _state.step_hook = old
     except EOFError:
-        primitive.debug(False)
+        stop_stepping()
 
 #XXX Adapted from Mariano Guerra's plang; research whether there's equivalent
 #    functionality in rlib.

@@ -31,17 +31,6 @@ def run_one_expr(val,
                 val, env, cont = val.interpret(env, cont)
             except kt.KernelError as e:
                 debug.on_error(e, val, env, cont)
-            except AssertionError as e:
-                print "Trying to evaluate", val.tostring()
-                if val.source_pos is not None:
-                    val.source_pos.print_()
-                else:
-                    c = cont
-                    while c is not None and c.source_pos is None:
-                        c = c.prev
-                    if c is not None:
-                        c.source_pos.print_()
-                raise e
     except kt.Done as e:
         return e.value
 

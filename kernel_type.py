@@ -37,7 +37,7 @@ class KernelValue(object):
 class String(KernelValue):
     _immutable_fields_ = ['value']
     def __init__(self, value, source_pos=None):
-        assert isinstance(value, str), "wrong value for String: %r" % value
+        assert isinstance(value, str), "wrong value for String: %s" % value
         self.value = value
         self.source_pos = source_pos
     @jit.elidable
@@ -54,7 +54,7 @@ class Symbol(KernelValue):
     _immutable_fields_ = ['value']
 
     def __init__(self, value, source_pos=None):
-        assert isinstance(value, str), "wrong value for Symbol: %r" % value
+        assert isinstance(value, str), "wrong value for Symbol: %s" % value
         self.value = value
         self.source_pos = source_pos
 
@@ -116,7 +116,7 @@ def is_inert(kv):
 class Boolean(KernelValue):
     _immutable_fields_ = ['value']
     def __init__(self, value, source_pos=None):
-        assert isinstance(value, bool), "wrong value for Boolean: %r" % value
+        assert isinstance(value, bool), "wrong value for Boolean: %s" % value
         self.value = value
         self.source_pos = source_pos
     @jit.elidable
@@ -139,8 +139,8 @@ class Pair(KernelValue):
     simple = False
     def __init__(self, car, cdr, source_pos=None):
         # XXX: specialize for performance?
-        assert isinstance(car, KernelValue), "non-KernelValue car: %r" % car
-        assert isinstance(cdr, KernelValue), "non-KernelValue cdr: %r" % cdr
+        assert isinstance(car, KernelValue), "non-KernelValue car: %s" % car
+        assert isinstance(cdr, KernelValue), "non-KernelValue cdr: %s" % cdr
         self.car = car
         self.cdr = cdr
         self.source_pos = source_pos
@@ -149,7 +149,7 @@ class Pair(KernelValue):
         s.append("(")
         pair = self
         while True:
-            assert isinstance(pair, Pair), "not a pair: %r" % pair
+            assert isinstance(pair, Pair), "not a pair: %s" % pair
             s.append(pair.car.tostring())
             if isinstance(pair.cdr, Pair):
                 pair = pair.cdr
@@ -249,7 +249,7 @@ def select_interceptors(cont, cls):
 class Applicative(Combiner):
     def __init__(self, combiner, source_pos=None):
         #XXX: rename to wrapped_combiner
-        assert isinstance(combiner, Combiner), "wrong type to wrap: %r" % combiner
+        assert isinstance(combiner, Combiner), "wrong type to wrap: %s" % combiner
         self.wrapped_combiner = combiner
         self.source_pos = source_pos
     def combine(self, operands, env, cont, source_pos=None):
@@ -270,7 +270,7 @@ class Program(KernelValue):
 class NotFound(KernelError):
     _immutable_vars_ = ['val']
     def __init__(self, val):
-        assert isinstance(val, str), "trying to find non-string: %r" % val
+        assert isinstance(val, str), "trying to find non-string: %s" % val
         self.val = val
     def __str__(self):
         return "Symbol not found: %s" % self.val
@@ -281,10 +281,10 @@ class Environment(KernelValue):
         self.bindings = bindings or {}
         self.source_pos = source_pos
     def set(self, symbol, value):
-        assert isinstance(symbol, Symbol), "setting non-symbol: %r" % symbol
+        assert isinstance(symbol, Symbol), "setting non-symbol: %s" % symbol
         self.bindings[symbol.value] = value
     def lookup(self, symbol):
-        assert isinstance(symbol, Symbol), "looking up non-symbol: %r" % symbol
+        assert isinstance(symbol, Symbol), "looking up non-symbol: %s" % symbol
         try:
             ret = self.bindings[symbol.value]
             return ret
@@ -395,7 +395,7 @@ class SequenceCont(Continuation):
         return sequence(self.exprs, self.env, self.prev)
 
 def sequence(exprs, env, cont):
-    assert isinstance(exprs, Pair), "non-pair sequence: %r" % exprs
+    assert isinstance(exprs, Pair), "non-pair sequence: %s" % exprs
     if is_nil(exprs.cdr):
         return exprs.car, env, cont
     else:
@@ -414,7 +414,7 @@ class IfCont(Continuation):
         elif is_false(val):
             return self.alternative, self.env, self.prev
         else:
-            assert False, "not #t nor #f: %r" % val
+            assert False, "not #t nor #f: %s" % val
 
 class CondCont(Continuation):
     def __init__(self, clauses, env, prev, source_pos=None):
@@ -450,9 +450,9 @@ def match_parameter_tree(param_tree, operand_tree, env):
     elif is_ignore(param_tree):
         pass
     elif is_nil(param_tree):
-        assert is_nil(operand_tree), "nil matched to: %r" % operand_tree
+        assert is_nil(operand_tree), "nil matched to: %s" % operand_tree
     elif isinstance(param_tree, Pair):
-        assert isinstance(operand_tree, Pair), "pair matched to: %r" % operand_tree
+        assert isinstance(operand_tree, Pair), "pair matched to: %s" % operand_tree
         match_parameter_tree(param_tree.car, operand_tree.car, env)
         match_parameter_tree(param_tree.cdr, operand_tree.cdr, env)
 
@@ -470,7 +470,7 @@ class InterceptCont(Continuation):
         # instead.
         Continuation.__init__(self, outer_cont)
         self.next_cont = next_cont
-        assert isinstance(interceptor, Applicative), "non-applicative interceptor: %r" % interceptor
+        assert isinstance(interceptor, Applicative), "non-applicative interceptor: %s" % interceptor
         self.interceptor = interceptor.wrapped_combiner
         self.source_pos = source_pos
 
@@ -484,7 +484,7 @@ class InterceptCont(Continuation):
 class ExtendCont(Continuation):
     def __init__(self, receiver, env, cont_to_extend, source_pos=None):
         Continuation.__init__(self, cont_to_extend)
-        assert isinstance(receiver, Applicative), "non-applicative receiver: %r" % receiver
+        assert isinstance(receiver, Applicative), "non-applicative receiver: %s" % receiver
         self.receiver = receiver.wrapped_combiner
         self.env = env
         self.source_pos = source_pos
@@ -492,10 +492,10 @@ class ExtendCont(Continuation):
         return self.receiver.combine(val, self.env, self.prev)
 
 def car(val):
-    assert isinstance(val, Pair), "car on non-pair: %r" % val
+    assert isinstance(val, Pair), "car on non-pair: %s" % val
     return val.car
 def cdr(val):
-    assert isinstance(val, Pair), "cdr on non-pair: %r" % val
+    assert isinstance(val, Pair), "cdr on non-pair: %s" % val
     return val.cdr
 
 # caar, cadr, ..., caadr, ..., cdddddr.
@@ -510,7 +510,7 @@ def iter_list(vals):
     while isinstance(vals, Pair):
         yield vals.car
         vals = vals.cdr
-    assert is_nil(vals), "non null list tail: %r" % vals
+    assert is_nil(vals), "non null list tail: %s" % vals
 
 def pythonify_list(vals):
     ret = []

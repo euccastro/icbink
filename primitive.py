@@ -207,13 +207,13 @@ def test_error(val):
 
 @export('debug-on')
 def _debug_on(val):
-    assert kt.nil.equal(val)
+    assert kt.is_nil(val)
     debug.start_stepping()
     return kt.inert
 
 @export('debug-off')
 def _debug_off(val):
-    assert kt.nil.equal(val)
+    assert kt.is_nil(val)
     debug.stop_stepping()
     return kt.inert
 

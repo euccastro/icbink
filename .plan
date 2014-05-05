@@ -1,10 +1,32 @@
-Make a basic interpreter:
-    Do Guarded continuations pretty early, because that's where I perceive the biggest risk and complication, and it may be traumatic to retrofit later on
-        Test (building everything needed in the process)
-        Guarded continuation-based exception handling.
-            Hierarchy?  See what Klisp has.  Maybe check out R6RS?
+Error types:
+    Type error: a builtin expects a type (e.g. string) but gets a different, incompatible one
+        This accounts for 100% of the checks in primitive.py!
+    Param tree mismatch on definition
+        A case of TypeError?
+    So, so far we have:
+        root-continuation (exits the program)
+            error-continuation
+                type-error-continuation
+                    param-mismatch-continuation
+            (user-code-continuation)
+
+Guarded continuation-based exception handling.
+    Hierarchy?  See what Klisp has.  Maybe check out R6RS?
+        Klisp has error-continuation and system-error-continuation
+        Collect all errors we have so far and see whether a hierarchy suggests itself...
+        Make all errors recoverable, where it makes sense
+
+Main concepts not done yet:
+    Encapsulations
+    Static and dynamic keyed variables
+    Numbers!
+
+Pilfer tests from SINK and Klisp.
+    Maybe when I get closer to claiming feature completeness?
 
 Document non-rpython branch.
+
+More tests for everything, esp. guarded continuations.
 
 --- Postponed
 
@@ -13,19 +35,17 @@ breakpoints in debugger?
 inherit source positions wherever it makes sense
     YAGNI?
 
-Check out pypy/rpython/rlib/parsing/lexer.py:SourcePos when we want to use source position for debugging and exceptions.
 Optimize dictionaries using maps:
     http://morepypy.blogspot.com.es/2011/03/controlling-tracing-of-interpreter-with_21.html
     Maybe we can use some of Pycket's environment optimizations.  Study them while keeping in mind that Kernel has first class environments.
+
 Consider Kernel-compliant handling of cyclic lists.
+
 Consider mutable lists.
 
 --- Archived
 
 start with immutable lists
-
-don't worry about cyclic lists in the beginning
-    and maybe don't ever, esp. if I stick to immutable lists
 
 story of a combination:
     we interpret a pair

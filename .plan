@@ -1,80 +1,14 @@
 Make a basic interpreter:
-
-    XXX: ,r'ing out of the combiner position doesn't seem to work.
-
-    story of a combination:
-        we interpret a pair
-        on interpretation, we evaluate the car, with a CombineCont continuation
-        the prev of the CombineCont is the continuation that is expecting the value
-            but it doesn't have the right source info because it corresponds to 'upper' in the code
-        we may be interested in returning to this place from a continuation where we are
-            evaluating the arguments
-            evaluating the body of the operative
-        CombineCont calls combine on the first arg on plug_reduce *and its own prev expression as the prev*.
-            THEREFORE, THE COMBINECONT ITSELF IS NOT REACHABLE ANYMORE!
-            The combiner of a primitive operative is not very interesting; just calls primitive code
-            The combiner of a compound operative builds the right environment and calls `sequence` (again, on the continuation previous to the combinecont)
-            The combiner of an applicative calls evaluate_arguments with an ApplyCont child of the prev.
-                def evaluate_arguments(vals, env, cont):
-                    if isinstance(vals, Pair):
-                        return vals.car, env, EvalArgsCont(vals.cdr, env, cont)
-                    else:
-                        return vals, env, cont
-                EvalArgsCont, in turn, calls evaluate_arguments with a GatherArgsCont
-
-    Use applycont in addition to combineconts:
-        their prev will get the result of the combination anyway
-        indeed, only applyconts evaluate their arguments.
-    trace what happens when we:
-        run an applicative
-        define an applicative
-        run an operative
-        define an operative
-
-        draw the continuation tree at all points.  see how we would go about
-            ,n
-            ,r
-            ,b
-        on ,r just watch for the return from 
-    copy the source_pos in interpretation
-        unless there was already a source_pos in the object
-        so far we only need them in applycont and combinecont
-    We find a combinecont, but nothing guarantees us that it's the closest one. :/
-        We really need to keep a stack of some sort.  The continuation hierarchy isn't.
-    implement ,n (and ,r?)
-        #XXX: pequeno desfasse: parece que estou mostrando a posiçom errada (o primeiro
-              elemento dũa combinaçom, e nom o paréntese.
-        tamém tenho que infectar todas as continuations.  Portanto acabava antes metendo o
-        código no default e em todas.
-        add 'return hook' (and perhaps 'escape hook'?) to kt, so applyCont (combinecont?)
-        can trigger it.
-        what are ,n and ,r supposed to do on escape?
-        XXX: what is ,n supposed to do in a plug_reduce context?
-            same as ,r?
-                and what does ,r do?
-                returns to the closest enclosing application?
-                    and how do we intercept there after the fact, without mutating the
-                    continuation tree?
-                        all plug_reduces have a check for debug?
-                            maybe we only need combinator plug_reduces
-                                ApplyCont or CombineCont?
-                                    Si, potencialmente quero seguir escapando a contextos nos que nunca debuguei in first place.
-                quando fazemos um salto nom desativamos debug, apenas instalamos um guard.
-                esse guard sabe saltar os contextos nom interessantes.
-            well, it can still infect the continuation it's about to return to
-                infinite loop?  that's the continuation we infected in first place!
     Do Guarded continuations pretty early, because that's where I perceive the biggest risk and complication, and it may be traumatic to retrofit later on
         Test (building everything needed in the process)
         Guarded continuation-based exception handling.
-    debugger in the face of abnormal passes?
-    for ,b:
-        we stop when the source has a source_info with a line equal to the breakpoint
+            Hierarchy?  See what Klisp has.  Maybe check out R6RS?
 
-Document rpython branch.
-
-Clean up naming in the various tracing/debugging facilities.
+Document non-rpython branch.
 
 --- Postponed
+
+breakpoints in debugger?
 
 inherit source positions wherever it makes sense
     YAGNI?
@@ -89,5 +23,26 @@ Consider mutable lists.
 --- Archived
 
 start with immutable lists
+
 don't worry about cyclic lists in the beginning
     and maybe don't ever, esp. if I stick to immutable lists
+
+story of a combination:
+    we interpret a pair
+    on interpretation, we evaluate the car, with a CombineCont continuation
+    the prev of the CombineCont is the continuation that is expecting the value
+        but it doesn't have the right source info because it corresponds to 'upper' in the code
+    we may be interested in returning to this place from a continuation where we are
+        evaluating the arguments
+        evaluating the body of the operative
+    CombineCont calls combine on the first arg on plug_reduce *and its own prev expression as the prev*.
+        THEREFORE, THE COMBINECONT ITSELF IS NOT REACHABLE ANYMORE!
+        The combiner of a primitive operative is not very interesting; just calls primitive code
+        The combiner of a compound operative builds the right environment and calls `sequence` (again, on the continuation previous to the combinecont)
+        The combiner of an applicative calls evaluate_arguments with an ApplyCont child of the prev.
+            def evaluate_arguments(vals, env, cont):
+                if isinstance(vals, Pair):
+                    return vals.car, env, EvalArgsCont(vals.cdr, env, cont)
+                else:
+                    return vals, env, cont
+            EvalArgsCont, in turn, calls evaluate_arguments with a GatherArgsCont

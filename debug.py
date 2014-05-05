@@ -142,16 +142,16 @@ def debug_interaction(env, cont):
             else:
                 import interpret
                 dbgexprs = parse.parse(cmd)
-                for dbgexpr in dbgexprs.data:
-                    old = _state.step_hook
-                    _state.step_hook = None
-                    try:
+                old = _state.step_hook
+                _state.step_hook = None
+                try:
+                    for dbgexpr in dbgexprs.data:
                         dbg_val = interpret.run_one_expr(
                                 dbgexpr,
                                 env)
                         print dbg_val.tostring()
-                    finally:
-                        _state.step_hook = old
+                finally:
+                    _state.step_hook = old
     except EOFError:
         stop_stepping()
 

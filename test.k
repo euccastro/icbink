@@ -282,6 +282,7 @@
 
 #;($sequence
   (debug-on)
+  ($define! x "xx")
   (println (string-append "a" "b"))
   (debug-off))
 

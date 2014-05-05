@@ -13,6 +13,8 @@ class StepHook(DebugHook):
     def on_eval(self, val, env, cont):
         if val.source_pos is not None:
             val.source_pos.print_()
+        else:
+            print "(no source)", val.tostring()
         debug_interaction(env, cont)
     def on_plug_reduce(self, val, cont):
         if cont.source_pos is not None:

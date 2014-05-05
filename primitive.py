@@ -244,9 +244,9 @@ driver = jit.JitDriver(reds=['env', 'cont'],
 def load(path, env):
     src = open(path).read()
     src_lines = src.split("\n")
-    program = parse.parse(src, path)
-    for expr in program.data:
-        kernel_eval(expr, env)
+    program = kt.Pair(_ground_env.bindings['$sequence'],
+                      parse.parse(src, path))
+    kernel_eval(program, env)
 
 def check_guards(guards):
     for guard in kt.iter_list(guards):
@@ -292,3 +292,5 @@ _ground_env = kt.Environment([], _exports)
 load("kernel.k", _ground_env)
 _extended_env = kt.Environment([_ground_env], {})
 load("extension.k", _extended_env)
+
+del _exports

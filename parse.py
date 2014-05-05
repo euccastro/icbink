@@ -66,8 +66,7 @@ class Visitor(RPythonVisitor):
     def visit_SUPPRESS(self, node):
         return suppress_next
     def visit_sequence(self, node):
-        return kt.Program(
-                filter_suppressed([self.dispatch(c) for c in node.children]))
+        return self.visit_list(node)
     def visit_BOOLEAN(self, node):
         return kt.Boolean(node.token.source == '#t',
                           self.make_src_pos(node))

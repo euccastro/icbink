@@ -266,14 +266,6 @@ class Applicative(Combiner):
     def tostring(self):
         return "<applicative %s>" % self.wrapped_combiner.tostring()
 
-class Program(KernelValue):
-    """Not a real Kernel value; just to keep RPython happy."""
-    def __init__(self, exprs):
-        self.data = exprs
-        self.source_pos = None
-    def tostring(self):
-        return str([expr.tostring() for expr in self.data])
-
 class NotFound(KernelError):
     _immutable_vars_ = ['val']
     def __init__(self, val):

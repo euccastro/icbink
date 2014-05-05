@@ -140,13 +140,13 @@ def debug_interaction(env, cont):
             elif cmd == ",q":
                 raise SystemExit
             else:
-                import interpret
+                import primitive
                 dbgexprs = parse.parse(cmd)
                 old = _state.step_hook
                 _state.step_hook = None
                 try:
                     for dbgexpr in dbgexprs.data:
-                        dbg_val = interpret.run_one_expr(
+                        dbg_val = primitive.kernel_eval(
                                 dbgexpr,
                                 env)
                         print dbg_val.tostring()

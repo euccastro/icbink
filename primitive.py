@@ -1,12 +1,13 @@
 from itertools import product
 
-from rpython.rlib import rstring
+from rpython.rlib import jit, rstring
 
 import debug
 import kernel_type as kt
+import parse
 
 
-exports = {}
+_exports = {}
 
 def export(name, simple=True):
     operative = name.startswith("$")
@@ -19,7 +20,7 @@ def export(name, simple=True):
             comb = kt.Primitive(fn, name)
         if not operative:
             comb = kt.Applicative(comb)
-        exports[name] = comb
+        _exports[name] = comb
         return fn
     return wrapper
 
@@ -217,6 +218,36 @@ def _debug_off(val):
     debug.stop_stepping()
     return kt.inert
 
+def kernel_eval(val, env):
+    cont = kt.TerminalCont()
+    try:
+        while True:
+            driver.jit_merge_point(val=val, env=env, cont=cont)
+            debug.on_eval(val, env, cont)
+            try:
+                val, env, cont = val.interpret(env, cont)
+            except kt.KernelError as e:
+                debug.on_error(e, val, env, cont)
+    except kt.Done as e:
+        return e.value
+
+def get_printable_location(green_val):
+    if green_val is None:
+        return "No green val"
+    else:
+        return green_val.tostring()
+
+driver = jit.JitDriver(reds=['env', 'cont'],
+                       greens=['val'],
+                       get_printable_location=get_printable_location)
+
+def load(path, env):
+    src = open(path).read()
+    src_lines = src.split("\n")
+    program = parse.parse(src, path)
+    for expr in program.data:
+        kernel_eval(expr, env)
+
 def check_guards(guards):
     for guard in kt.iter_list(guards):
         selector, interceptor = kt.pythonify_list(guard)
@@ -246,5 +277,18 @@ for name in ['boolean',
              'string']:
     cls = getattr(kt, name.capitalize())
     kernel_name = name + "?"
-    exports[kernel_name] = make_pred(cls, kernel_name)
+    _exports[kernel_name] = make_pred(cls, kernel_name)
 
+def empty_environment():
+    return kt.Environment([], {})
+
+def standard_environment():
+    return kt.Environment([_ground_env], {})
+
+def extended_environment():
+    return kt.Environment([_extended_env], {})
+
+_ground_env = kt.Environment([], _exports)
+load("kernel.k", _ground_env)
+_extended_env = kt.Environment([_ground_env], {})
+load("extension.k", _extended_env)

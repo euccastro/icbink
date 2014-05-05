@@ -1,34 +1,7 @@
 Make a basic interpreter:
-    debugger in the face of abnormal passes?
 
-    whenever we evaluate a pair, we link the RECEIVING continuation with the pair (or at least with its source info) OK
+    XXX: ,r'ing out of the combiner position doesn't seem to work.
 
-    a plan for ,r:
-        at any given moment, the closest continuation with an associated pair is the one we return to.
-
-    for ,n:
-        we resume on the continuation that is prev to our current one
-            so, just cont?
-    for ,s:
-        we stop in the next iteration of the eval loop that has a source
-
-    for ,b:
-        we stop when the source has a source_info with a line equal to the breakpoint
-
-    when we jump out of the dynamic extent of one of the continuations above, do we want to capture the jump?
-        maybe we want to have a different method per monitor type
-        .on_eval(env, val, cont)
-        .on_plug_reduce(val, cont)
-        .on_abnormal_pass(val, [src, ..., dst])  <- we have already built the list so we might as well provide it
-
-    DebugMonitor()
-        StepDebugMonitor()
-        LeapDebugMonitor()
-        ReturnDebugMonitor()
-        BreakpointDebugMonitor(condition=<Predicate>)
-
-    a generic plan:
-        debug_state has a list of functions that take a (val, env, cont) and return true whenever we should stop at the given triple.
     story of a combination:
         we interpret a pair
         on interpretation, we evaluate the car, with a CombineCont continuation
@@ -93,6 +66,9 @@ Make a basic interpreter:
     Do Guarded continuations pretty early, because that's where I perceive the biggest risk and complication, and it may be traumatic to retrofit later on
         Test (building everything needed in the process)
         Guarded continuation-based exception handling.
+    debugger in the face of abnormal passes?
+    for ,b:
+        we stop when the source has a source_info with a line equal to the breakpoint
 
 Document rpython branch.
 

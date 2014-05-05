@@ -30,7 +30,7 @@ class KernelValue(object):
         return cont.plug_reduce(self.interpret_simple(env))
     def interpret_simple(self, env):
         return self
-    def combine(self, operands, env, cont, source_pos=None):
+    def combine(self, operands, env, cont):
         raise KernelTypeError("%s is not callable" % self.tostring())
 
 #XXX: Unicode
@@ -172,7 +172,7 @@ class Pair(KernelValue):
                 and self.cdr.equal(other.cdr))
 
 class Combiner(KernelValue):
-    def combine(self, operands, env, cont, source_pos=None):
+    def combine(self, operands, env, cont):
         raise NotImplementedError
 
 class Operative(Combiner):
@@ -185,9 +185,7 @@ class CompoundOperative(Operative):
         self.exprs = exprs
         self.static_env = static_env
         self.source_pos = source_pos
-    def combine(self, operands, env, cont, source_pos=None):
-        if cont.source_pos is None:
-            cont.source_pos = source_pos
+    def combine(self, operands, env, cont):
         eval_env = Environment([self.static_env])
         match_parameter_tree(self.formals, operands, eval_env)
         match_parameter_tree(self.eformal, env, eval_env)
@@ -197,25 +195,21 @@ class Primitive(Operative):
     def __init__(self, code):
         self.code = code
         self.source_pos = None
-    def combine(self, operands, env, cont, source_pos=None):
-        if cont.source_pos is None:
-            cont.source_pos = source_pos
+    def combine(self, operands, env, cont):
         return self.code(operands, env, cont)
 
 class SimplePrimitive(Operative):
     def __init__(self, code):
         self.code = code
         self.source_pos = None
-    def combine(self, operands, env, cont, source_pos=None):
-        if cont.source_pos is None:
-            cont.source_pos = source_pos
+    def combine(self, operands, env, cont):
         return cont.plug_reduce(self.code(operands))
 
 class ContWrapper(Operative):
     def __init__(self, cont, source_pos=None):
         self.cont = cont
         self.source_pos = source_pos
-    def combine(self, operands, env, cont, source_pos=None):
+    def combine(self, operands, env, cont):
         return abnormally_pass(operands, cont, self.cont)
 
 def abnormally_pass(operands, src_cont, dst_cont):
@@ -252,9 +246,7 @@ class Applicative(Combiner):
         assert isinstance(combiner, Combiner), "wrong type to wrap: %s" % combiner
         self.wrapped_combiner = combiner
         self.source_pos = source_pos
-    def combine(self, operands, env, cont, source_pos=None):
-        if cont.source_pos is None:
-            cont.source_pos = source_pos
+    def combine(self, operands, env, cont):
         return evaluate_arguments(operands,
                                   env,
                                   ApplyCont(self.wrapped_combiner, env, cont))
@@ -372,11 +364,13 @@ class ApplyCont(Continuation):
 class CombineCont(Continuation):
     def __init__(self, operands, env, prev, source_pos=None):
         Continuation.__init__(self, prev)
+        if prev.source_pos is None:
+            prev.source_pos = source_pos
         self.operands = operands
         self.env = env
         self.source_pos = source_pos
     def _plug_reduce(self, val):
-        return val.combine(self.operands, self.env, self.prev, self.source_pos)
+        return val.combine(self.operands, self.env, self.prev)
 
 class GuardCont(Continuation):
     def __init__(self, guards, env, prev, source_pos=None):

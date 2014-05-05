@@ -251,8 +251,8 @@
    "enter right"
    "enter right-child"
    "exit right-child"
-   ; note we don't enter or exit `base` anymore
    "exit right"
+   ; note we don't enter or exit `base` anymore
    "enter left"
    "enter left-child")
   "x"

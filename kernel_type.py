@@ -580,6 +580,8 @@ class ArityMismatch(OperandMismatch):
 class KernelExit(Exception):
     pass
 
+# We need to wrap ErrorObjects in these because we want them to be KernelValues
+# and rpython doesn't allow raising non-Exceptions nor multiple inheritance.
 class KernelException(Exception):
     def __init__(self, val):
         assert isinstance(val, ErrorObject)

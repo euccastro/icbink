@@ -92,6 +92,14 @@
         "w")
     "z"))
 
+; I don't think this is Kernel semantics (e.g. read, in 4.10.5, "an applicative
+; must have a list of operands", but is this cool or what?
+($test "combine with non-list operand" "ha!" (($lambda x x) . "ha!"))
+($test "combine with improper list" ("a" . "b") (($lambda x x) "a" . "b"))
+($test "combine: final cdr of improper list matches 'rest' formal"
+  ("a" "b")
+  (($lambda (x . y) (list x y)) "a" . "b"))
+
 ($test "simple extend-continuation" "outside inside"
   ($let/cc cc
     (apply-continuation
@@ -262,13 +270,21 @@
       (right right-child))
     (jump right-child left-child "x")))
 
-; I don't think this is Kernel semantics (e.g. read, in 4.10.5, "an applicative
-; must have a list of operands", but is this cool or what?
-($test "combine with non-list operand" "ha!" (($lambda x x) . "ha!"))
-($test "combine with improper list" ("a" . "b") (($lambda x x) "a" . "b"))
-($test "combine: final cdr of improper list matches 'rest' formal"
-  ("a" "b")
-  (($lambda (x . y) (list x y)) "a" . "b"))
+($test "simple error handling"
+  "caught"
+  ($let/cc cc
+    ($let* ((child
+              (guard-continuation
+                ()
+                cc
+                (list (list error-continuation
+                            ($lambda (tree divert)
+                              (apply divert "caught"))))))
+            (grandchild
+              (extend-continuation
+                child
+                ($lambda #ignore xyzzy))))
+      (apply-continuation grandchild "here we go"))))
 
 
 #;($sequence

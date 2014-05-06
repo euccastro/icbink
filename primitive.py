@@ -226,7 +226,7 @@ class AdHocCont(kt.Continuation):
     def _plug_reduce(self, val):
         raise AdHocException(val)
 
-def kernel_eval(val, env, cont):
+def kernel_eval(val, env, cont=None):
     if cont is None:
         cont = AdHocCont(kt.root_cont)
     try:
@@ -300,7 +300,7 @@ def extended_environment():
     return kt.Environment([_extended_env], {})
 
 _exports['root-continuation'] = kt.root_cont
-_exports['error-continuanion'] = kt.error_cont
+_exports['error-continuation'] = kt.error_cont
 _exports['system-error-continuation'] = kt.system_error_cont
 _exports['user-error-continuation'] = kt.user_error_cont
 _exports['type-error-continuation'] = kt.type_error_cont
@@ -312,5 +312,8 @@ _ground_env = kt.Environment([], _exports)
 load("kernel.k", _ground_env)
 _extended_env = kt.Environment([_ground_env], {})
 load("extension.k", _extended_env)
+
+def standard_value(name):
+    return _ground_env.bindings[name]
 
 del _exports

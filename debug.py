@@ -96,6 +96,24 @@ class DebugState(object):
             val.source_pos.print_()
         debug_interaction(env, cont)
 
+def guarded_ad_hoc_cont(cont):
+    from parse import parse
+    import primitive
+    import kernel_type as kt
+    s = primitive.standard_value
+    env = primitive.standard_environment()
+    env.set(kt.get_interned('cont'), primitive.AdHocCont(cont))
+    return primitive.kernel_eval(
+        kt.Pair(primitive.standard_value("$sequence"),
+                parse("""(guard-continuation
+                           ()
+                           cont
+                           (list (list error-continuation
+                                       ($lambda (val divert)
+                                         (println val)
+                                         (apply divert #inert)))))""")),
+        env)
+
 def debug_interaction(env, cont):
     import kernel_type as kt
     import parse
@@ -150,7 +168,7 @@ def debug_interaction(env, cont):
                 try:
                     dbgval = primitive.kernel_eval(expr,
                                                    env,
-                                                   primitive.AdHocCont(cont))
+                                                   guarded_ad_hoc_cont(cont))
                     print dbgval.tostring()
                 finally:
                     _state.step_hook = old

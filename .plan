@@ -1,15 +1,7 @@
 Error types:
-    problem: raised exceptions must be subclasses of exception, but we can't have multiple inheritance so they can't be kernel objects too
-        have a single KernelException that has the kernelvalue as an attribute
     port debugging
         catch all errors, but don't exit
-        debugging executes in a continuation that is a child of the context we stopped in
-        the continuation includes guards for kernel-error-cont that just prints the error and continues execution
-        now, we don't get the destination continuation, so we can't polymorphically display the error message
-            make the throwable irritant contain the information on how to display the error?
-                that would simplify error handling, because error continuation would just display the irritant
-                so let's have an ErrorDescription class, that we can print out and query for its attributes
-                so why not use klisp's?
+        the continuation includes an exit guard for kernel-error-cont that just prints the error and continues execution
     test errors
     XXX: source_pos, additional debugging info
     XXX: does the debugger run in the root continuation tree?

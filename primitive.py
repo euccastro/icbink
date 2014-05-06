@@ -218,14 +218,27 @@ def _debug_off(val):
     debug.stop_stepping()
     return kt.inert
 
+class AdHocException(Exception):
+    def __init__(self, val):
+        self.val = val
+
+class AdHocCont(kt.Continuation):
+    def _plug_reduce(self, val):
+        raise AdHocException(val)
+
 def kernel_eval(val, env, cont):
-    while True:
-        driver.jit_merge_point(val=val, env=env, cont=cont)
-        debug.on_eval(val, env, cont)
-        try:
-            val, env, cont = val.interpret(env, cont)
-        except kt.KernelException as e:
-            val, env, cont = kt.abnormally_pass(e.val, cont, e.val.dest_cont)
+    if cont is None:
+        cont = AdHocCont(kt.root_cont)
+    try:
+        while True:
+            driver.jit_merge_point(val=val, env=env, cont=cont)
+            debug.on_eval(val, env, cont)
+            try:
+                val, env, cont = val.interpret(env, cont)
+            except kt.KernelException as e:
+                val, env, cont = kt.abnormally_pass(e.val, cont, e.val.dest_cont)
+    except AdHocException as e:
+        return e.val
 
 def get_printable_location(green_val):
     if green_val is None:
@@ -237,25 +250,13 @@ driver = jit.JitDriver(reds=['env', 'cont'],
                        greens=['val'],
                        get_printable_location=get_printable_location)
 
-class AdHocException(Exception):
-    def __init__(self, val):
-        self.val = val
-
-class AdHocContinuation(kt.Continuation):
-    def _plug_reduce(self, val):
-        raise AdHocException(val)
 
 def load(path, env, cont=None):
-    if cont is None:
-        cont = AdHocContinuation(kt.root_cont)
     src = open(path).read()
     src_lines = src.split("\n")
     program = kt.Pair(_ground_env.bindings['$sequence'],
                       parse.parse(src, path))
-    try:
-        return kernel_eval(program, env, cont)
-    except AdHocException as e:
-        return e.val
+    return kernel_eval(program, env, cont)
 
 def check_guards(guards):
     for guard in kt.iter_list(guards):

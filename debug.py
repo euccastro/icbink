@@ -97,6 +97,9 @@ class DebugState(object):
         debug_interaction(env, cont)
 
 def debug_interaction(env, cont):
+    import kernel_type as kt
+    import parse
+    import primitive
     try:
         while True:
             os.write(1, "> ")
@@ -136,19 +139,19 @@ def debug_interaction(env, cont):
             elif cmd == ",E":
                 print_bindings(env, recursive=True)
             elif cmd == ",q":
-                raise SystemExit
+                raise kt.KernelExit
             else:
-                import parse
-                import primitive
                 dbgexprs = parse.parse(cmd)
+                assert isinstance(dbgexprs, kt.Pair)
+                assert kt.is_nil(kt.cdr(dbgexprs))
+                expr = kt.car(dbgexprs)
                 old = _state.step_hook
                 _state.step_hook = None
                 try:
-                    for dbgexpr in dbgexprs.data:
-                        dbg_val = primitive.kernel_eval(
-                                dbgexpr,
-                                env)
-                        print dbg_val.tostring()
+                    dbgval = primitive.kernel_eval(expr,
+                                                   env,
+                                                   primitive.AdHocCont(cont))
+                    print dbgval.tostring()
                 finally:
                     _state.step_hook = old
     except EOFError:

@@ -29,7 +29,8 @@ def string_append(vals):
     s = rstring.StringBuilder()
     for v in kt.iter_list(vals):
         kt.check_type(v, kt.String)
-        s.append(v.sval)
+        assert isinstance(v, kt.String)
+        s.append(v.strval)
     return kt.String(s.build())
 
 @export('continuation->applicative')
@@ -176,7 +177,8 @@ def call_with_cc(vals, env, cont):
 def symbol2string(vals):
     symbol, = kt.pythonify_list(vals)
     kt.check_type(symbol, kt.Symbol)
-    return kt.String(symbol.sval)
+    assert isinstance(symbol, kt.Symbol)
+    return kt.String(symbol.symval)
 
 # Not standard Kernel functions; for debugging only.
 

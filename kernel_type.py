@@ -26,21 +26,21 @@ class KernelValue(object):
 
 #XXX: Unicode
 class String(KernelValue):
-    _immutable_fields_ = ['sval']
     type_name = 'string'
+    _immutable_fields_ = ['strval']
     def __init__(self, value, source_pos=None):
         assert isinstance(value, str), "wrong value for String: %s" % value
-        self.sval = value
+        self.strval = value
         self.source_pos = source_pos
     @jit.elidable
     def tostring(self):
-        return '"%s"' % self.sval
+        return '"%s"' % self.strval
     @jit.elidable
     def todisplay(self):
-        return self.sval
+        return self.strval
     @jit.elidable
     def equal(self, other):
-        return isinstance(other, String) and other.sval == self.sval
+        return isinstance(other, String) and other.strval == self.strval
 
 class Number(KernelValue):
     type_name = 'number'
@@ -93,23 +93,23 @@ class Bignum(Number):
 #XXX: Unicode
 class Symbol(KernelValue):
 
-    _immutable_fields_ = ['sval']
     type_name = 'symbol'
+    _immutable_fields_ = ['symval']
 
     def __init__(self, value, source_pos=None):
         assert isinstance(value, str), "wrong value for Symbol: %s" % value
-        self.sval = value
+        self.symval = value
         self.source_pos = source_pos
 
     @jit.elidable
     def tostring(self):
-        return self.sval
+        return self.symval
 
     def interpret_simple(self, env):
         return env.lookup(self)
 
     def equal(self, other):
-        return isinstance(other, Symbol) and other.sval == self.sval
+        return isinstance(other, Symbol) and other.symval == self.symval
 
 _symbol_table = {}
 
@@ -325,11 +325,11 @@ class Environment(KernelValue):
         self.source_pos = source_pos
     def set(self, symbol, value):
         assert isinstance(symbol, Symbol), "setting non-symbol: %s" % symbol
-        self.bindings[symbol.sval] = value
+        self.bindings[symbol.symval] = value
     def lookup(self, symbol):
         assert isinstance(symbol, Symbol), "looking up non-symbol: %s" % symbol
         try:
-            ret = self.bindings[symbol.sval]
+            ret = self.bindings[symbol.symval]
             return ret
         except KeyError:
             for parent in self.parents:
@@ -500,7 +500,7 @@ def match_parameter_tree(param_tree, operand_tree, env):
         while isinstance(op, Applicative):
             op = op.wrapped_combiner
         if isinstance(op, Operative) and op.name is None:
-            op.name = param_tree.sval
+            op.name = param_tree.symval
         env.set(param_tree, operand_tree)
     elif is_ignore(param_tree):
         pass

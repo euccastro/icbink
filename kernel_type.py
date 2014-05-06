@@ -1,7 +1,7 @@
 from itertools import product
 
-from rpython.rlib import jit
-from rpython.rlib import rstring
+from rpython.rlib import jit, rstring
+from rpython.rlib.rbigint import rbigint
 
 import debug
 
@@ -26,7 +26,7 @@ class KernelValue(object):
 
 #XXX: Unicode
 class String(KernelValue):
-    _immutable_fields_ = ['value']
+    _immutable_fields_ = ['sval']
     type_name = 'string'
     def __init__(self, value, source_pos=None):
         assert isinstance(value, str), "wrong value for String: %s" % value
@@ -35,15 +35,65 @@ class String(KernelValue):
     @jit.elidable
     def tostring(self):
         return '"%s"' % self.sval
+    @jit.elidable
     def todisplay(self):
         return self.sval
+    @jit.elidable
     def equal(self, other):
         return isinstance(other, String) and other.sval == self.sval
+
+class Number(KernelValue):
+    type_name = 'number'
+
+class Infinity(Number):
+    pass
+
+class ExactPositiveInfinity(Infinity):
+    def tostring(self):
+        return "#e+infinity"
+    def equal(self, other):
+        return isinstance(other, ExactPositiveInfinity)
+
+e_pos_inf = ExactPositiveInfinity()
+
+class ExactNegativeInfinity(Infinity):
+    def tostring(self):
+        return "#e-infinity"
+    def equal(self, other):
+        return isinstance(other, ExactNegativeInfinity)
+
+e_neg_inf = ExactNegativeInfinity()
+
+class Fixnum(Number):
+    _immutable_fields_ = ['fixval']
+    def __init__(self, fixval, source_pos=None):
+        assert isinstance(fixval, int)
+        self.fixval = fixval
+        self.source_pos = source_pos
+    @jit.elidable
+    def tostring(self):
+        return str(self.fixval)
+    @jit.elidable
+    def equal(self, other):
+        return isinstance(other, Fixnum) and other.fixval == self.fixval
+
+class Bignum(Number):
+    _immutable_fields_ = ['bigval']
+    def __init__(self, bigval, source_pos=None):
+        assert isinstance(bigval, rbigint)
+        self.bigval = bigval
+        self.source_pos = source_pos
+    @jit.elidable
+    def tostring(self):
+        return str(self.bigval)
+    @jit.elidable
+    def equal(self, other):
+        return isinstance(other, Bignum) and other.bigval.eq(self.bigval)
 
 #XXX: Unicode
 class Symbol(KernelValue):
 
-    _immutable_fields_ = ['value']
+    _immutable_fields_ = ['sval']
     type_name = 'symbol'
 
     def __init__(self, value, source_pos=None):

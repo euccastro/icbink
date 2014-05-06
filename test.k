@@ -286,6 +286,23 @@
                 ($lambda #ignore xyzzy))))
       (apply-continuation grandchild "here we go"))))
 
+($test "number predicate"
+  #t
+  (number?
+    0
+    -0
+    #b1
+    #b#e01
+    #e#b-10
+    #e#d1
+    #e+infinity
+    #e-infinity
+    #e#b10
+    #x-deadbeef ; negative hex
+    999999999999999999999999999999999999999999999999999999999999999 ; decimal bignum
+    #xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ; bignum
+    #e#o01234567))
+
 
 #;($sequence
   (debug-on)

@@ -287,6 +287,7 @@ for cls in [kt.Boolean,
             kt.Applicative,
             kt.Combiner,
             kt.String,
+            kt.Number,
             kt.ErrorObject]:
     pred_name = cls.type_name + "?"
     _exports[pred_name] = make_pred(cls, pred_name)

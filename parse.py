@@ -7,6 +7,9 @@ __all__ = ['parse']
 from rpython.rlib.parsing.ebnfparse import parse_ebnf, make_parse_function
 from rpython.rlib.parsing.parsing import ParseError
 from rpython.rlib.parsing.tree import RPythonVisitor
+from rpython.rlib.rbigint import rbigint
+from rpython.rlib import rstring
+from rpython.rlib.rarithmetic import string_to_int
 
 import kernel_type as kt
 
@@ -23,12 +26,19 @@ grammar = r"""
     RIGHT_PAREN: "\)";
     IDENTIFIER: "\+|\-|[a-zA-Z!$%&\*/:<=>\?@\^_~][a-zA-Z0-9!$%&\*\+\-/:<=>\?@\^_~]*";
     STRING: "\"([^\"]|\\\")*\"";
+    EXACT_POSITIVE_INFINITY: "#e\+infinity";
+    EXACT_NEGATIVE_INFINITY: "#e\-infinity";
+    EXACT_BIN_INTEGER: "(#e#b|#b#e|#b)[\+\-]?[01]+";
+    EXACT_OCT_INTEGER: "(#e#o|#o#e|#o)[\+\-]?[0-7]+";
+    EXACT_DEC_INTEGER: "(#e#d|#d#e|#e|#d)?[\+\-]?[0-9]+";
+    EXACT_HEX_INTEGER: "(#e#x|#x#e|#x)[\+\-]?[0-9a-fA-F]+";
     IGNORE: " |\n|;[^\n]*\n";
     sequence: expr >sequence< | expr;
     expr: <list> | <dotted_list> | <atom>;
     list: LEFT_PAREN >sequence< RIGHT_PAREN;
     dotted_list: LEFT_PAREN >sequence< ["."] expr RIGHT_PAREN;
-    atom: <BOOLEAN> | <INERT> | <IGNORE_VAL> | <SUPPRESS> | <STRING> | <IDENTIFIER> | <nil>;
+    atom: <BOOLEAN> | <INERT> | <IGNORE_VAL> | <SUPPRESS> | <STRING> | <number> | <IDENTIFIER> | <nil>;
+    number: <EXACT_POSITIVE_INFINITY> | <EXACT_NEGATIVE_INFINITY> | <EXACT_BIN_INTEGER> | <EXACT_OCT_INTEGER> | <EXACT_DEC_INTEGER> | <EXACT_HEX_INTEGER>;
     nil: LEFT_PAREN RIGHT_PAREN;
     """
 
@@ -77,6 +87,18 @@ class Visitor(RPythonVisitor):
         # Remove quotation marks.
         return kt.String(node.token.source[:-1][1:],
                          self.make_src_pos(node))
+    def visit_EXACT_BIN_INTEGER(self, node):
+        return self.exact_from_node(node, 2)
+    def visit_EXACT_OCT_INTEGER(self, node):
+        return self.exact_from_node(node, 8)
+    def visit_EXACT_DEC_INTEGER(self, node):
+        return self.exact_from_node(node, 10)
+    def visit_EXACT_HEX_INTEGER(self, node):
+        return self.exact_from_node(node, 16)
+    def visit_EXACT_POSITIVE_INFINITY(self, node):
+        return kt.ExactPositiveInfinity(self.make_src_pos(node))
+    def visit_EXACT_NEGATIVE_INFINITY(self, node):
+        return kt.ExactNegativeInfinity(self.make_src_pos(node))
     def visit_IGNORE_VAL(self, node):
         return kt.Ignore(self.make_src_pos(node))
     def visit_INERT(self, node):
@@ -99,6 +121,22 @@ class Visitor(RPythonVisitor):
     def make_src_pos(self, node):
         src_pos = node.getsourcepos()
         return SourcePos(self.source_file, src_pos.lineno, src_pos.columnno)
+    def exact_from_node(self, node, radix):
+        s = node.token.source
+        i = 0
+        # Skip prefixes
+        while s[i] in "#ebodx":
+            i += 1
+        s = s[i:]
+        src_pos = self.make_src_pos(node)
+        try:
+            return kt.Fixnum(string_to_int(s, radix), src_pos)
+        except rstring.ParseStringOverflowError:
+            if radix == 10:
+                bi = rbigint.fromdecimalstr(s)
+            else:
+                bi = rbigint.fromstr(s, radix)
+            return kt.Bignum(bi, src_pos)
 
 def iter_with_prev(lst):
     prev = None

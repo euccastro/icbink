@@ -1,30 +1,8 @@
 Error types:
-    port debugging
-        catch all errors, but don't exit
-        the continuation includes an exit guard for kernel-error-cont that just prints the error and continues execution
     test errors
-    XXX: source_pos, additional debugging info
-    XXX: does the debugger run in the root continuation tree?
-    Type error: a builtin expects a type (e.g. string) but gets a different, incompatible one
-        This accounts for 100% of the checks in primitive.py!
-    Param tree mismatch on definition
-        A case of TypeError?
-    So, so far we have:
-        root-continuation (exits the program)
-            error-continuation
-                type-error-continuation
-                    param-mismatch-continuation
-            (user-code-continuation) ; load-continuation?
-    REPL root continuation semantics?
-        when the interpreter is called in interactive mode, it reads each expression from stdin with a continuation that just prints it out and reads the next one.
-    load root continuation semantics?
-        when the interpreter is called with a single filename, it reads each expression with a continuation that just reads the next one and discards it, until there are no more expressions to read.
-            XXX: do we return the return value of the latest one?  only if it can be coerced to an int?
-                in any event, #inert should count as success
-    in both cases, these continuations are children of the root continuation
-    tasks:
-        make a Sequence around all statements?
-        make a ReplSequence for the REPL?
+    add source_pos, additional debugging info to errors
+    debug interaction by default?
+        perhaps as a command-line option?
 
 Guarded continuation-based exception handling.
     Hierarchy?  See what Klisp has.  Maybe check out R6RS?

@@ -256,7 +256,6 @@ def select_interceptors(cont, cls):
 class Applicative(Combiner):
     type_name = 'applicative'
     def __init__(self, combiner, source_pos=None):
-        #XXX: rename to wrapped_combiner
         assert isinstance(combiner, Combiner), "wrong type to wrap: %s" % combiner
         self.wrapped_combiner = combiner
         self.source_pos = source_pos
@@ -456,9 +455,13 @@ def match_parameter_tree(param_tree, operand_tree, env):
     elif is_ignore(param_tree):
         pass
     elif is_nil(param_tree):
-        assert is_nil(operand_tree), "nil matched to: %s" % operand_tree.tostring()
+        if not is_nil(operand_tree):
+            # XXX: this only shows the tail of the mismatch
+            raise KernelException(OperandMismatch(param_tree, operand_tree))
     elif isinstance(param_tree, Pair):
-        assert isinstance(operand_tree, Pair), "pair %s matched to: %s" % (param_tree.tostring(), operand_tree.tostring())
+        if not isinstance(operand_tree, Pair):
+            # XXX: this only shows the tail of the mismatch
+            raise KernelException(OperandMismatch(param_tree, operand_tree))
         match_parameter_tree(param_tree.car, operand_tree.car, env)
         match_parameter_tree(param_tree.cdr, operand_tree.cdr, env)
 

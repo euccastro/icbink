@@ -35,7 +35,7 @@ def string_append(vals):
 @export('continuation->applicative')
 def continuation2applicative(vals):
     cont, = kt.pythonify_list(vals, 1)
-    assert isinstance(cont, kt.Continuation)
+    kt.check_type(cont, kt.Continuation)
     return kt.Applicative(kt.ContWrapper(cont))
 
 @export('guard-continuation', simple=False)
@@ -43,7 +43,7 @@ def guard_continuation(vals, env, cont):
     entry_guards, cont_to_guard, exit_guards = kt.pythonify_list(vals)
     check_guards(entry_guards)
     check_guards(exit_guards)
-    assert isinstance(cont_to_guard, kt.Continuation)
+    kt.check_type(cont_to_guard, kt.Continuation)
     outer_cont = kt.OuterGuardCont(entry_guards, env, cont_to_guard)
     inner_cont = kt.InnerGuardCont(exit_guards, env, outer_cont)
     return inner_cont, env, cont
@@ -56,9 +56,9 @@ def extend_continuation(vals, env, cont):
         recv_env = kt.Environment([])
     else:
         cont_to_extend, receiver, recv_env = args
-    assert isinstance(cont_to_extend, kt.Continuation)
-    assert isinstance(receiver, kt.Applicative)
-    assert isinstance(recv_env, kt.Environment)
+    kt.check_type(cont_to_extend, kt.Continuation)
+    kt.check_type(receiver, kt.Applicative)
+    kt.check_type(recv_env, kt.Environment)
     return kt.ExtendCont(receiver, recv_env, cont_to_extend), env, cont
 
 @export('$sequence')
@@ -67,6 +67,7 @@ def sequence(exprs, env, cont):
 
 @export('$vau')
 def vau(operands, env, cont):
+    #XXX: check arity flexibly
     assert isinstance(operands, kt.Pair)
     formals = operands.car
     cdr = operands.cdr
@@ -106,13 +107,13 @@ def define(vals, env, cont):
 
 @export('wrap')
 def wrap(vals):
-    combiner, = kt.pythonify_list(vals)
+    combiner, = kt.pythonify_list(vals, 1)
     return kt.Applicative(combiner)
 
 @export('unwrap')
 def unwrap(vals):
-    applicative, = kt.pythonify_list(vals)
-    assert isinstance(applicative, kt.Applicative)
+    applicative, = kt.pythonify_list(vals, 1)
+    kt.check_type(applicative, kt.Applicative)
     return applicative.wrapped_combiner
 
 @export('list')
@@ -158,7 +159,7 @@ def apply_(vals, env_ignore, cont):
         env = kt.Environment([])
     else:
         applicative, args, env = ls
-    assert isinstance(applicative, kt.Applicative)
+    kt.check_type(applicative, kt.Applicative)
     return kt.Pair(applicative.wrapped_combiner, args), env, cont
 
 @export('$cond')
@@ -168,13 +169,13 @@ def cond(vals, env, cont):
 @export('call/cc', simple=False)
 def call_with_cc(vals, env, cont):
     applicative, = kt.pythonify_list(vals)
-    assert isinstance(applicative, kt.Applicative)
+    kt.check_type(applicative, kt.Applicative)
     return kt.Pair(applicative, kt.Pair(cont, kt.nil)), env, cont
 
 @export('symbol->string')
 def symbol2string(vals):
     symbol, = kt.pythonify_list(vals)
-    assert isinstance(symbol, kt.Symbol)
+    kt.check_type(symbol, kt.Symbol)
     return kt.String(symbol.sval)
 
 # Not standard Kernel functions; for debugging only.
@@ -199,6 +200,7 @@ class TestError(Exception):
         assert isinstance(val, kt.KernelValue)
         self.val = val
 
+# XXX: integrate into error handling system?  start debug REPL?
 @export('test-error')
 def test_error(val):
     print "ERROR: ",
@@ -262,9 +264,9 @@ def check_guards(guards):
     for guard in kt.iter_list(guards):
         selector, interceptor = kt.pythonify_list(guard)
         #XXX: kernelized error handling
-        assert isinstance(selector, kt.Continuation)
-        assert isinstance(interceptor, kt.Applicative)
-        assert isinstance(interceptor.wrapped_combiner, kt.Operative)
+        kt.check_type(selector, kt.Continuation)
+        kt.check_type(interceptor, kt.Applicative)
+        kt.check_type(interceptor.wrapped_combiner, kt.Operative)
 
 def make_pred(cls, name):
     def pred(vals):

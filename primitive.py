@@ -29,7 +29,7 @@ def string_append(vals):
     s = rstring.StringBuilder()
     for v in kt.iter_list(vals):
         kt.check_type(v, kt.String)
-        s.append(v.value)
+        s.append(v.sval)
     return kt.String(s.build())
 
 @export('continuation->applicative')
@@ -175,7 +175,7 @@ def call_with_cc(vals, env, cont):
 def symbol2string(vals):
     symbol, = kt.pythonify_list(vals)
     assert isinstance(symbol, kt.Symbol)
-    return kt.String(symbol.value)
+    return kt.String(symbol.sval)
 
 # Not standard Kernel functions; for debugging only.
 
@@ -224,8 +224,8 @@ def kernel_eval(val, env, cont):
         debug.on_eval(val, env, cont)
         try:
             val, env, cont = val.interpret(env, cont)
-        except kt.ErrorObject as e:
-            val, env, cont = kt.abnormally_pass(e, cont, e.dest_cont)
+        except kt.KernelException as e:
+            val, env, cont = kt.abnormally_pass(e.val, cont, e.val.dest_cont)
 
 def get_printable_location(green_val):
     if green_val is None:

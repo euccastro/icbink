@@ -1,4 +1,6 @@
 Error types:
+    problem: raised exceptions must be subclasses of exception, but we can't have multiple inheritance so they can't be kernel objects too
+        have a single KernelException that has the kernelvalue as an attribute
     port debugging
         catch all errors, but don't exit
         debugging executes in a continuation that is a child of the context we stopped in

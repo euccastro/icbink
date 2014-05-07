@@ -28,10 +28,10 @@ grammar = r"""
     STRING: "\"([^\"]|\\\")*\"";
     EXACT_POSITIVE_INFINITY: "#e\+infinity";
     EXACT_NEGATIVE_INFINITY: "#e\-infinity";
-    EXACT_BIN_INTEGER: "(#e#b|#b#e|#b)[\+\-]?[01]+";
-    EXACT_OCT_INTEGER: "(#e#o|#o#e|#o)[\+\-]?[0-7]+";
-    EXACT_DEC_INTEGER: "(#e#d|#d#e|#e|#d)?[\+\-]?[0-9]+";
-    EXACT_HEX_INTEGER: "(#e#x|#x#e|#x)[\+\-]?[0-9a-fA-F]+";
+    EXACT_BIN_INTEGER: "(#[eE]#[bB]|#[bB]#[eE]|#[bB])[\+\-]?[01]+";
+    EXACT_OCT_INTEGER: "(#[eE]#[oO]|#[oO]#[eE]|#[oO])[\+\-]?[0-7]+";
+    EXACT_DEC_INTEGER: "(#[eE]#[dD]|#[dD]#[eE]|#[eE]|#[dD])?[\+\-]?[0-9]+";
+    EXACT_HEX_INTEGER: "(#[eE]#[xX]|#[xX]#[eE]|#[xX])[\+\-]?[0-9a-fA-F]+";
     IGNORE: " |\n|;[^\n]*\n";
     sequence: expr >sequence< | expr;
     expr: <list> | <dotted_list> | <atom>;
@@ -125,8 +125,8 @@ class Visitor(RPythonVisitor):
         s = node.token.source
         i = 0
         # Skip prefixes
-        while s[i] in "#ebodx":
-            i += 1
+        while s[i] == "#":
+            i += 2
         s = s[i:]
         src_pos = self.make_src_pos(node)
         try:

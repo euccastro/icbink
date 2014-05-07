@@ -298,6 +298,8 @@
     #e+infinity
     #e-infinity
     #e#b10
+    #X1cC
+    #xeee
     #x-deadbeef ; negative hex
     999999999999999999999999999999999999999999999999999999999999999 ; decimal bignum
     #xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ; bignum

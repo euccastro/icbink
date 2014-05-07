@@ -286,7 +286,7 @@
                 ($lambda #ignore xyzzy))))
       (apply-continuation grandchild "here we go"))))
 
-($test "number predicate"
+($test "number parsing and predicate"
   #t
   (number?
     0
@@ -304,6 +304,46 @@
     999999999999999999999999999999999999999999999999999999999999999 ; decimal bignum
     #xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ; bignum
     #e#o01234567))
+
+($test "trivial fixnum sum"
+  0
+  (+))
+
+($test "unary fixnum sum"
+  7
+  (+ 7))
+
+($test "binary fixnum sum"
+  4
+  (+ 2 2))
+
+($test "n-ary fixnum sum"
+  10
+  (+ 2 5 7 -4))
+
+($test "bignum sum"
+  999999999999999999999999999999999999999999999999999999999999999
+  (+ 444444444444444444444444444444444444444444444444444444444444444
+     555555555555555555555555555555555555555555555555555555555555555))
+
+($define! max-fixnum
+  ($if (bignum? #x80000000)
+    #x7fffffff
+    #x7fffffffffffffff))
+
+($define! min-bignum (+ max-fixnum 1))
+
+($test "max fixnum" #t (fixnum? max-fixnum))
+($test "max fixnum, promotion" #t (bignum? min-bignum))
+($test "demotion to fixnum" #t (fixnum? (+ min-bignum -1)))
+($test "+: infinity absorbs fixnum"
+  #e+infinity
+  (+ 42 #e+infinity))
+
+($test "+: infinity absorbs bignum"
+  #e-infinity
+  (+ #e-infinity 999999999999999999999999999999999999999999999999999999999999999))
+
 
 
 #;($sequence

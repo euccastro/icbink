@@ -1,6 +1,6 @@
 from itertools import product
 
-from rpython.rlib import jit, rstring
+from rpython.rlib import jit, rarithmetic, rstring
 from rpython.rlib.rbigint import rbigint
 
 import debug
@@ -49,18 +49,32 @@ class Infinity(Number):
     pass
 
 class ExactPositiveInfinity(Infinity):
+    @jit.elidable
     def tostring(self):
         return "#e+infinity"
+    @jit.elidable
     def equal(self, other):
         return isinstance(other, ExactPositiveInfinity)
+    def add(self, other):
+        if isinstance(other, ExactNegativeInfinity):
+            raise KernelException(AddPositiveToNegativeInfinityError(self, other))
+        else:
+            return self
 
 e_pos_inf = ExactPositiveInfinity()
 
 class ExactNegativeInfinity(Infinity):
+    @jit.elidable
     def tostring(self):
         return "#e-infinity"
+    @jit.elidable
     def equal(self, other):
         return isinstance(other, ExactNegativeInfinity)
+    def add(self, other):
+        if isinstance(other, ExactPositiveInfinity):
+            raise KernelException(AddPositiveToNegativeInfinityError(other, self))
+        else:
+            return self
 
 e_neg_inf = ExactNegativeInfinity()
 
@@ -76,6 +90,17 @@ class Fixnum(Number):
     @jit.elidable
     def equal(self, other):
         return isinstance(other, Fixnum) and other.fixval == self.fixval
+    @jit.elidable
+    def add(self, other):
+        if isinstance(other, Fixnum):
+            try:
+                res = rarithmetic.ovfcheck(other.fixval + self.fixval)
+                return Fixnum(res)
+            except OverflowError:
+                return Bignum(rbigint.fromint(self.fixval).add(rbigint.fromint(other.fixval)))
+        else:
+            assert isinstance(other, Number)
+            return other.add(self)
 
 class Bignum(Number):
     _immutable_fields_ = ['bigval']
@@ -89,6 +114,23 @@ class Bignum(Number):
     @jit.elidable
     def equal(self, other):
         return isinstance(other, Bignum) and other.bigval.eq(self.bigval)
+    @jit.elidable
+    def add(self, other):
+        if isinstance(other, Bignum):
+            otherval = other.bigval
+        elif isinstance(other, Fixnum):
+            otherval = rbigint.fromint(other.fixval)
+        else:
+            assert isinstance(other, Number)
+            return other.add(self)
+        return try_and_make_fixnum(self.bigval.add(otherval))
+
+def try_and_make_fixnum(bi):
+    try:
+        num = bi.toint()
+        return Fixnum(num)
+    except OverflowError:
+        return Bignum(bi)
 
 #XXX: Unicode
 class Symbol(KernelValue):
@@ -575,7 +617,10 @@ type_error_cont = Continuation(user_error_cont)
 operand_mismatch_cont = Continuation(type_error_cont)
 arity_mismatch_cont = Continuation(operand_mismatch_cont)
 symbol_not_found_cont = Continuation(user_error_cont)
+add_positive_to_negative_infinity_cont = Continuation(user_error_cont)
 
+# XXX: do we really want a hierarchy of these, or can we just have constructor
+# functions for ErrorObject?
 class ErrorObject(KernelValue):
     type_name = 'error-object'
     dest_cont = error_cont
@@ -615,6 +660,7 @@ def check_type(val, type_):
         raise KernelException(KernelTypeError(type_, val))
 
 class OperandMismatch(KernelTypeError):
+    dest_cont = operand_mismatch_cont
     def __init__(self, expected_params, actual_operands):
         self.message = String("%s doesn't match expected param tree %s"
                               % (actual_operands.tostring(),
@@ -622,12 +668,20 @@ class OperandMismatch(KernelTypeError):
         self.irritants = Pair(expected_params, Pair(actual_operands, nil))
 
 class ArityMismatch(OperandMismatch):
+    dest_cont = arity_mismatch_cont
     def __init__(self, expected_arity, actual_arguments):
         expected_arity = String(str(expected_arity)) # XXX: numbers
         self.message = String("expected %s arguments but got %s"
                               % (expected_arity.tostring(),
                                  actual_arguments.tostring()))
         self.irritants = Pair(expected_arity, Pair(actual_arguments, nil))
+
+class AddPositiveToNegativeInfinityError(UserError):
+    dest_cont = add_positive_to_negative_infinity_cont
+    def __init__(self, pos, neg):
+        self.message = String("Tried to add positive to negative infinity")
+        # Maybe only useful for source info?
+        self.irritants = Pair(pos, Pair(neg, nil))
 
 # XXX: Not actual kernel type.
 class KernelExit(Exception):

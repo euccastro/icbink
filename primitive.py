@@ -222,6 +222,15 @@ def _debug_off(val):
     debug.stop_stepping()
     return kt.inert
 
+@export('+')
+def add(vals):
+    accum = kt.Fixnum(0)
+    for v in kt.iter_list(vals):
+        kt.check_type(v, kt.Number)
+        assert isinstance(v, kt.Number)
+        accum = accum.add(v)
+    return accum
+
 class AdHocException(Exception):
     def __init__(self, val):
         self.val = val
@@ -294,6 +303,10 @@ for cls in [kt.Boolean,
     pred_name = cls.type_name + "?"
     _exports[pred_name] = make_pred(cls, pred_name)
 del pred_name, cls
+
+# Not standard Kernel and not real type predicates.
+_exports['fixnum?'] = make_pred(kt.Fixnum, 'fixnum?')
+_exports['bignum?'] = make_pred(kt.Bignum, 'bignum?')
 
 def empty_environment():
     return kt.Environment([], {})

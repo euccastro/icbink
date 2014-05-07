@@ -1,5 +1,3 @@
-big issue: if we give the parser unparsable input, it will just stop and return whatever complete forms it has parsed to that point.  We really need to throw an error.
-
 Error types:
     test errors
     add source_pos, additional debugging info to errors

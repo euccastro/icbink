@@ -33,6 +33,7 @@ grammar = r"""
     EXACT_DEC_INTEGER: "(#[eE]#[dD]|#[dD]#[eE]|#[eE]|#[dD])?[\+\-]?[0-9]+";
     EXACT_HEX_INTEGER: "(#[eE]#[xX]|#[xX]#[eE]|#[xX])[\+\-]?[0-9a-fA-F]+";
     IGNORE: " |\n|;[^\n]*\n";
+    program: <sequence> [EOF];
     sequence: expr >sequence< | expr;
     expr: <list> | <dotted_list> | <atom>;
     list: LEFT_PAREN >sequence< RIGHT_PAREN;

@@ -383,6 +383,52 @@ class Environment(KernelValue):
                         raise
             raise KernelException(NotFound(symbol))
 
+class EncapsulationType(KernelValue):
+    def create_methods(self, source_pos=None):
+        constructor = Applicative(EncapsulationConstructor(self, source_pos))
+        predicate = Applicative(EncapsulationPredicate(self, source_pos))
+        accessor = Applicative(EncapsulationAccessor(self, source_pos))
+        return Pair(constructor, Pair(predicate, Pair(accessor, nil)))
+
+class EncapsulatedObject(KernelValue):
+    # Abusing terminology; this is actually a union of types.
+    type_name = 'encapsulated-object'
+    def __init__(self, val, encapsulation_type, source_pos=None):
+        self.val = val
+        self.encapsulation_type = encapsulation_type
+        self.source_pos = source_pos
+
+class EncapsulationMethod(Operative):
+    def __init__(self, encapsulation_type, source_pos=None):
+        self.encapsulation_type = encapsulation_type
+        self.source_pos = source_pos
+        self.name = None
+
+class EncapsulationConstructor(EncapsulationMethod):
+    def combine(self, operands, env, cont):
+        to_wrap, = pythonify_list(operands, 1)
+        return cont.plug_reduce(EncapsulatedObject(to_wrap,
+                                                   self.encapsulation_type))
+
+class EncapsulationPredicate(EncapsulationMethod):
+    def combine(self, operands, env, cont):
+        for val in iter_list(operands):
+            if not isinstance(val, EncapsulatedObject):
+                return cont.plug_reduce(false)
+            if val.encapsulation_type is not self.encapsulation_type:
+                return cont.plug_reduce(false)
+        return cont.plug_reduce(true)
+
+class EncapsulationAccessor(EncapsulationMethod):
+    def combine(self, operands, env, cont):
+        wrapped, = pythonify_list(operands, 1)
+        check_type(wrapped, EncapsulatedObject)
+        assert isinstance(wrapped, EncapsulatedObject)
+        if wrapped.encapsulation_type is self.encapsulation_type:
+            return cont.plug_reduce(wrapped.val)
+        else:
+            raise KernelException(EncapsulationTypeError(self, wrapped))
+
 class Continuation(KernelValue):
     type_name = 'continuation'
     _immutable_args_ = ['prev']
@@ -614,6 +660,7 @@ error_cont = BaseErrorCont(root_cont)
 system_error_cont = Continuation(error_cont)
 user_error_cont = Continuation(error_cont)
 type_error_cont = Continuation(user_error_cont)
+encapsulation_type_error_cont = Continuation(type_error_cont)
 operand_mismatch_cont = Continuation(type_error_cont)
 arity_mismatch_cont = Continuation(operand_mismatch_cont)
 symbol_not_found_cont = Continuation(user_error_cont)
@@ -653,6 +700,15 @@ class KernelTypeError(UserError):
                               % (expected_type.type_name,
                                  actual_value.tostring()))
         self.irritants = Pair(String(expected_type.type_name),
+                              Pair(actual_value, nil))
+
+class EncapsulationTypeError(KernelTypeError):
+    dest_cont = encapsulation_type_error_cont
+    def __init__(self, expected_type, actual_value):
+        self.message = String("Expected encapsulated object of type %s, but got %s instead"
+                              % (expected_type.tostring(),
+                                 actual_value.tostring()))
+        self.irritants = Pair(expected_type,
                               Pair(actual_value, nil))
 
 def check_type(val, type_):

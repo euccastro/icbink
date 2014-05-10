@@ -1,8 +1,4 @@
 Main concepts not done yet:
-    Numbers!
-        just exact integers to start with
-            Implement functions required by R-1RK for the numbers module.
-                +
     Encapsulations
     Futures
     Static and dynamic keyed variables

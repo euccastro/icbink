@@ -180,6 +180,11 @@ def symbol2string(vals):
     assert isinstance(symbol, kt.Symbol)
     return kt.String(symbol.symval)
 
+@export('make-encapsulation-type')
+def make_encapsulation_type(vals):
+    kt.pythonify_list(vals, 0)
+    return kt.EncapsulationType().create_methods()
+
 # Not standard Kernel functions; for debugging only.
 
 @export('print')
@@ -322,9 +327,11 @@ _exports['error-continuation'] = kt.error_cont
 _exports['system-error-continuation'] = kt.system_error_cont
 _exports['user-error-continuation'] = kt.user_error_cont
 _exports['type-error-continuation'] = kt.type_error_cont
+_exports['encapsulation-type-error-continuation'] = kt.encapsulation_type_error_cont
 _exports['operand-mismatch-continuation'] = kt.operand_mismatch_cont
 _exports['arity-mismatch-continuation'] = kt.arity_mismatch_cont
 _exports['symbol-not-found-continuation'] = kt.symbol_not_found_cont
+_exports['add-positive-to-negative-infinity-continuation'] = kt.add_positive_to_negative_infinity_cont
 
 _ground_env = kt.Environment([], _exports)
 load("kernel.k", _ground_env)

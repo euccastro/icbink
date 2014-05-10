@@ -45,6 +45,27 @@
       ($unless (null? error)
         (apply test-error (list* name error))))))
 
+; Test that evaluation of the given expression signals the given error.
+($define! $test-raises
+  ($vau (title continuation . body) env
+    (println "Testing" title "...")
+    ($unless
+      (equal? "%%%caught%%%"
+              ($let/cc cc
+                ($let* ((child
+                          (guard-continuation
+                            ()
+                            cc
+                            (list (list (eval continuation env)
+                                        ($lambda (tree divert)
+                                          (apply divert "%%%caught%%%"))))))
+                        (grandchild
+                          (extend-continuation
+                            child
+                            ($lambda #ignore (eval body env)))))
+                  (apply-continuation grandchild #inert))))
+      (test-error "expected error" continuation "not raised"))))
+
 ; Tests BEGIN
 
 ; Let's begin by testing trace itself.
@@ -56,6 +77,9 @@
   (reset-trace!) (trace "a") (trace "b") (get-trace))
 ($test "$trace-and-result" (("a" "b") "c") ($trace-and-result ((trace "a") (trace "b") "c")))
 ($t/t "$t/t" ("a" "b") "c" (trace "a") (trace "b") "c")
+($test-raises "symbol not found"
+  symbol-not-found-continuation
+  xyzzywwwwxxxmmm)
 
 ; Kernel semantics proper.
 
@@ -286,6 +310,7 @@
                 ($lambda #ignore xyzzy))))
       (apply-continuation grandchild "here we go"))))
 
+
 ($test "number parsing and predicate"
   #t
   (number?
@@ -344,7 +369,50 @@
   #e-infinity
   (+ #e-infinity 999999999999999999999999999999999999999999999999999999999999999))
 
+; Encapsulations.
 
+($define! (e1 p1? d1) (make-encapsulation-type))
+($define! (e2 p2? d2) (make-encapsulation-type))
+
+($define! w11 (e1 "w11"))
+($define! w12 (e1 "w12"))
+($define! w2 (e2 "w2"))
+
+($test "trivial encapsulation predicate"
+  #t
+  (p1?))
+
+($test "unary encapsulation predicate"
+  #t
+  (p1? w11))
+
+($test "binary encapsulation predicate"
+  #t
+  (p1? w11 w12))
+
+($test "encapsulation predicate: not an encapsulation"
+  #f
+  (p1? "not an encapsulation"))
+
+($test "encapsulation predicate: wrong encapsulation type"
+  #f
+  (p1? w2))
+
+($test "encapsulation predicate: failing on second argument"
+  #f
+  (p1? w11 w2))
+
+($test "unwrap encapsulation object"
+  ("w11" "w2")
+  (list (d1 w11) (d2 w2)))
+
+($test-raises "type error on non encapsulation"
+  type-error-continuation
+  (d1 "not an encapsulation"))
+
+($test-raises "encapsulation type error on the wrong encapsulation"
+  encapsulation-type-error-continuation
+  (d1 w2))
 
 #;($sequence
   (debug-on)

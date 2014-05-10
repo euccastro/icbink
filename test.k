@@ -484,8 +484,12 @@
   (force p2)
   (force p1))
 
-($test "promises: third R-1RK test"
-  (100000000)
+; Commented out by default because this one takes forever to run.  This is to
+; test that chains of forced promises run in constant space.  To convince
+; yourself of this fact, uncomment this, and run this side by side with
+; a resource monitor.
+#;($test "promises: third R-1RK test"
+  1000000
   ($define! stream-filter
     ($lambda (p? s)
       ($lazy
@@ -499,8 +503,8 @@
   ($define! from
     ($lambda (n)
       ($lazy (cons n (from (+ n 1))))))
-  (force (stream-filter ($lambda (n) (=? n 100000000))
-                        (from 0))))
+  (car (force (stream-filter ($lambda (n) (=? n 1000000))
+                             (from 0)))))
 
 #;($sequence
   (debug-on)

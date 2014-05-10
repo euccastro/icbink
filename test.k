@@ -369,6 +369,34 @@
   #e-infinity
   (+ #e-infinity 999999999999999999999999999999999999999999999999999999999999999))
 
+($test "subtraction"
+  2
+  (- 7 3 2))
+
+($test "order, trivial"
+  #t
+  (<?))
+
+($test "order, one"
+  #t
+  (<? 1))
+
+($test "order, several"
+  #t
+  (<? 2 3 7 9))
+
+($test "equal, one"
+  #t
+  (=? 2))
+
+($test "equal, several"
+  #t
+  (=? 4 4 4))
+
+($test "not equal"
+  #f
+  (=? 4 4 3))
+
 ; Encapsulations.
 
 ($define! (e1 p1? d1) (make-encapsulation-type))
@@ -413,6 +441,66 @@
 ($test-raises "encapsulation type error on the wrong encapsulation"
   encapsulation-type-error-continuation
   (d1 w2))
+
+($test "promise predicate"
+  #t
+  (promise? ($lazy 1) (memoize 2)))
+
+($test "force non-promise"
+  "blah"
+  (force "blah"))
+
+($test "force memoization"
+  "blah"
+  (force (memoize "blah")))
+
+($test "force lazy promise"
+  3
+  (force ($lazy (+ 1 2))))
+
+($test "promises: first R-1RK test"
+  (5 0 10)
+  ($define! count 5)
+  ($define! p
+    ($let ((self (get-current-environment)))
+      ($lazy
+        ($if (<=? count 0)
+          count
+          ($sequence
+            ($set! self count (- count 1))
+            (force p)
+            ($set! self count (+ count 2))
+            count)))))
+  ($let* ((initial-count count)
+          (p-result (force p))
+          (count-afterwards count))
+    (list initial-count p-result count-afterwards)))
+
+($t/t "promises: second R-1RK test"
+  ("*")
+  #inert
+  ($define! p1 ($lazy (trace "*")))
+  ($define! p2 ($lazy p1))
+  (force p2)
+  (force p1))
+
+($test "promises: third R-1RK test"
+  (100000000)
+  ($define! stream-filter
+    ($lambda (p? s)
+      ($lazy
+        ($let ((v (force s)))
+          ($if (null? v)
+            v
+            ($let ((s (stream-filter p? (cdr v))))
+              ($if (p? (car v))
+                (cons (car v) s)
+                s)))))))
+  ($define! from
+    ($lambda (n)
+      ($lazy (cons n (from (+ n 1))))))
+  (force (stream-filter ($lambda (n) (=? n 100000000))
+                        (from 0))))
 
 #;($sequence
   (debug-on)

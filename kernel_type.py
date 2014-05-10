@@ -44,6 +44,18 @@ class String(KernelValue):
 
 class Number(KernelValue):
     type_name = 'number'
+    @jit.elidable
+    def lteq(self, other):
+        return self.lt(other) or self.equal(other)
+    @jit.elidable
+    def gt(self, other):
+        return other.lt(self)
+    @jit.elidable
+    def gteq(self, other):
+        return self.gt(other) or self.equal(other)
+    @jit.elidable
+    def sub(self, other):
+        return self.add(other.neg())
 
 class Infinity(Number):
     pass
@@ -55,11 +67,16 @@ class ExactPositiveInfinity(Infinity):
     @jit.elidable
     def equal(self, other):
         return isinstance(other, ExactPositiveInfinity)
+    @jit.elidable
+    def lt(self, other):
+        return False
     def add(self, other):
         if isinstance(other, ExactNegativeInfinity):
             raise KernelException(AddPositiveToNegativeInfinityError(self, other))
         else:
             return self
+    def neg(self):
+        return e_neg_inf
 
 e_pos_inf = ExactPositiveInfinity()
 
@@ -70,11 +87,16 @@ class ExactNegativeInfinity(Infinity):
     @jit.elidable
     def equal(self, other):
         return isinstance(other, ExactNegativeInfinity)
+    @jit.elidable
+    def lt(self, other):
+        return not isinstance(other, ExactNegativeInfinity)
     def add(self, other):
         if isinstance(other, ExactPositiveInfinity):
             raise KernelException(AddPositiveToNegativeInfinityError(other, self))
         else:
             return self
+    def neg(self):
+        return e_pos_inf
 
 e_neg_inf = ExactNegativeInfinity()
 
@@ -91,6 +113,14 @@ class Fixnum(Number):
     def equal(self, other):
         return isinstance(other, Fixnum) and other.fixval == self.fixval
     @jit.elidable
+    def lt(self, other):
+        if isinstance(other, Fixnum):
+            return self.fixval < other.fixval
+        elif isinstance(other, ExactNegativeInfinity):
+            return False
+        else:
+            return True
+    @jit.elidable
     def add(self, other):
         if isinstance(other, Fixnum):
             try:
@@ -101,6 +131,12 @@ class Fixnum(Number):
         else:
             assert isinstance(other, Number)
             return other.add(self)
+    @jit.elidable
+    def neg(self):
+        try:
+            return Fixnum(-self.fixval)
+        except OverflowError:
+            return Bignum(rbigint.fromint(self.fixval).neg())
 
 class Bignum(Number):
     _immutable_fields_ = ['bigval']
@@ -124,6 +160,9 @@ class Bignum(Number):
             assert isinstance(other, Number)
             return other.add(self)
         return try_and_make_fixnum(self.bigval.add(otherval))
+    @jit.elidable
+    def neg(self):
+        return try_and_make_fixnum(self.bigval.neg())
 
 def try_and_make_fixnum(bi):
     try:
@@ -429,6 +468,31 @@ class EncapsulationAccessor(EncapsulationMethod):
         else:
             raise KernelException(EncapsulationTypeError(self, wrapped))
 
+# Copying a trick from the reference implementation in the R-1RK.
+#
+# This is a member of promises so it can be overwritten altogether when
+# a promise results in another that must be resolved immediately.
+#
+# If env is None then val is the result of this promise, otherwise val is the
+# expression that we need to evaluate in env.
+class PromiseData(object):
+    def __init__(self, val, env):
+        self.val = val
+        self.env = env
+
+class Promise(KernelValue):
+    type_name = 'promise'
+    def __init__(self, val, env, source_pos=None):
+        self.data = PromiseData(val, env)
+        self.source_pos = source_pos
+    def force(self, cont):
+        if self.data.env is None:
+            return cont.plug_reduce(self.data.val)
+        else:
+            return (self.data.val,
+                    self.data.env,
+                    HandlePromiseResultCont(self, cont))
+
 class Continuation(KernelValue):
     type_name = 'continuation'
     _immutable_args_ = ['prev']
@@ -638,6 +702,21 @@ class ExtendCont(Continuation):
     def _plug_reduce(self, val):
         return self.receiver.combine(val, self.env, self.prev)
 
+class HandlePromiseResultCont(Continuation):
+    def __init__(self, promise, prev, source_pos=None):
+        Continuation.__init__(self, prev, source_pos)
+        self.promise = promise
+    def plug_reduce(self, val):
+        if self.promise.data.env is None:
+            return self.prev.plug_reduce(self.promise.data.val)
+        if isinstance(val, Promise):
+            self.promise.data = val.data
+            return self.promise.force(self.prev)
+        else:
+            self.promise.data.val = val
+            self.promise.data.env = None
+            return self.prev.plug_reduce(val)
+
 def car(val):
     assert isinstance(val, Pair), "car on non-pair: %s" % val
     return val.car
@@ -726,7 +805,7 @@ class OperandMismatch(KernelTypeError):
 class ArityMismatch(OperandMismatch):
     dest_cont = arity_mismatch_cont
     def __init__(self, expected_arity, actual_arguments):
-        expected_arity = String(str(expected_arity)) # XXX: numbers
+        expected_arity = String(expected_arity)
         self.message = String("expected %s arguments but got %s"
                               % (expected_arity.tostring(),
                                  actual_arguments.tostring()))
@@ -763,5 +842,5 @@ def pythonify_list(vals, check_arity=-1):
     for item in iter_list(vals):
         ret.append(item)
     if check_arity != -1 and len(ret) != check_arity:
-        raise KernelException(ArityMismatch(check_arity, vals))
+        raise KernelException(ArityMismatch(str(check_arity), vals))
     return ret

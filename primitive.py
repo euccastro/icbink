@@ -185,6 +185,24 @@ def make_encapsulation_type(vals):
     kt.pythonify_list(vals, 0)
     return kt.EncapsulationType().create_methods()
 
+@export('$lazy', simple=False)
+def lazy(vals, env, cont):
+    expr, = kt.pythonify_list(vals, 1)
+    return cont.plug_reduce(kt.Promise(expr, env))
+
+@export('memoize')
+def memoize(vals):
+    val, = kt.pythonify_list(vals, 1)
+    return kt.Promise(val, None)
+
+@export('force', simple=False)
+def force(vals, env, cont):
+    val, = kt.pythonify_list(vals, 1)
+    if isinstance(val, kt.Promise):
+        return val.force(cont)
+    else:
+        return cont.plug_reduce(val)
+
 # Not standard Kernel functions; for debugging only.
 
 @export('print')
@@ -235,6 +253,56 @@ def add(vals):
         assert isinstance(v, kt.Number)
         accum = accum.add(v)
     return accum
+
+@export('-')
+def sub(vals):
+    ls = kt.pythonify_list(vals)
+    if len(ls) < 2:
+        raise kt.KernelException(kt.ArityMismatch('>=2', vals))
+    accum = ls[0]
+    for v in ls[1:]:
+        kt.check_type(v, kt.Number)
+        assert isinstance(v, kt.Number)
+        accum = accum.sub(v)
+    return accum
+
+@export('=?')
+def lteq(vals):
+    ls = kt.pythonify_list(vals)
+    if len(ls) < 2:
+        return kt.true
+    latest = ls[0]
+    for v in ls[1:]:
+        kt.check_type(v, kt.Number)
+        assert isinstance(v, kt.Number)
+        if not latest.equal(v):
+            return kt.false
+        latest = v
+    return kt.true
+
+#XXX: refactor
+@export('<=?')
+def lteq(vals):
+    latest = kt.e_neg_inf
+    for v in kt.iter_list(vals):
+        kt.check_type(v, kt.Number)
+        assert isinstance(v, kt.Number)
+        if not latest.lteq(v):
+            return kt.false
+        latest = v
+    return kt.true
+
+#XXX: refactor
+@export('<?')
+def lteq(vals):
+    latest = kt.e_neg_inf
+    for v in kt.iter_list(vals):
+        kt.check_type(v, kt.Number)
+        assert isinstance(v, kt.Number)
+        if not latest.lt(v):
+            return kt.false
+        latest = v
+    return kt.true
 
 class AdHocException(Exception):
     def __init__(self, val):
@@ -304,6 +372,7 @@ for cls in [kt.Boolean,
             kt.Combiner,
             kt.String,
             kt.Number,
+            kt.Promise,
             kt.ErrorObject]:
     pred_name = cls.type_name + "?"
     _exports[pred_name] = make_pred(cls, pred_name)

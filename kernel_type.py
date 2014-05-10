@@ -32,28 +32,21 @@ class String(KernelValue):
         assert isinstance(value, str), "wrong value for String: %s" % value
         self.strval = value
         self.source_pos = source_pos
-    @jit.elidable
     def tostring(self):
         return '"%s"' % self.strval
-    @jit.elidable
     def todisplay(self):
         return self.strval
-    @jit.elidable
     def equal(self, other):
         return isinstance(other, String) and other.strval == self.strval
 
 class Number(KernelValue):
     type_name = 'number'
-    @jit.elidable
     def lteq(self, other):
         return self.lt(other) or self.equal(other)
-    @jit.elidable
     def gt(self, other):
         return other.lt(self)
-    @jit.elidable
     def gteq(self, other):
         return self.gt(other) or self.equal(other)
-    @jit.elidable
     def sub(self, other):
         return self.add(other.neg())
 
@@ -61,13 +54,10 @@ class Infinity(Number):
     pass
 
 class ExactPositiveInfinity(Infinity):
-    @jit.elidable
     def tostring(self):
         return "#e+infinity"
-    @jit.elidable
     def equal(self, other):
         return isinstance(other, ExactPositiveInfinity)
-    @jit.elidable
     def lt(self, other):
         return False
     def add(self, other):
@@ -81,13 +71,10 @@ class ExactPositiveInfinity(Infinity):
 e_pos_inf = ExactPositiveInfinity()
 
 class ExactNegativeInfinity(Infinity):
-    @jit.elidable
     def tostring(self):
         return "#e-infinity"
-    @jit.elidable
     def equal(self, other):
         return isinstance(other, ExactNegativeInfinity)
-    @jit.elidable
     def lt(self, other):
         return not isinstance(other, ExactNegativeInfinity)
     def add(self, other):
@@ -106,13 +93,10 @@ class Fixnum(Number):
         assert isinstance(fixval, int)
         self.fixval = fixval
         self.source_pos = source_pos
-    @jit.elidable
     def tostring(self):
         return str(self.fixval)
-    @jit.elidable
     def equal(self, other):
         return isinstance(other, Fixnum) and other.fixval == self.fixval
-    @jit.elidable
     def lt(self, other):
         if isinstance(other, Fixnum):
             return self.fixval < other.fixval
@@ -120,7 +104,6 @@ class Fixnum(Number):
             return False
         else:
             return True
-    @jit.elidable
     def add(self, other):
         if isinstance(other, Fixnum):
             try:
@@ -131,7 +114,6 @@ class Fixnum(Number):
         else:
             assert isinstance(other, Number)
             return other.add(self)
-    @jit.elidable
     def neg(self):
         try:
             return Fixnum(-self.fixval)
@@ -144,13 +126,10 @@ class Bignum(Number):
         assert isinstance(bigval, rbigint)
         self.bigval = bigval
         self.source_pos = source_pos
-    @jit.elidable
     def tostring(self):
         return str(self.bigval)
-    @jit.elidable
     def equal(self, other):
         return isinstance(other, Bignum) and other.bigval.eq(self.bigval)
-    @jit.elidable
     def add(self, other):
         if isinstance(other, Bignum):
             otherval = other.bigval
@@ -160,7 +139,6 @@ class Bignum(Number):
             assert isinstance(other, Number)
             return other.add(self)
         return try_and_make_fixnum(self.bigval.add(otherval))
-    @jit.elidable
     def neg(self):
         return try_and_make_fixnum(self.bigval.neg())
 
@@ -182,7 +160,6 @@ class Symbol(KernelValue):
         self.symval = value
         self.source_pos = source_pos
 
-    @jit.elidable
     def tostring(self):
         return self.symval
 
@@ -203,7 +180,6 @@ def get_interned(name):
 
 class Null(KernelValue):
     type_name = 'null'
-    @jit.elidable
     def tostring(self):
         return "()"
     def equal(self, other):
@@ -216,7 +192,6 @@ def is_nil(kv):
 
 class Ignore(KernelValue):
     type_name = 'ignore'
-    @jit.elidable
     def tostring(self):
         return '#ignore'
     def equal(self, other):
@@ -229,7 +204,6 @@ def is_ignore(kv):
 
 class Inert(KernelValue):
     type_name = 'inert'
-    @jit.elidable
     def tostring(self):
         return '#inert'
     def equal(self, other):
@@ -247,7 +221,6 @@ class Boolean(KernelValue):
         assert isinstance(value, bool), "wrong value for Boolean: %s" % value
         self.bval = value
         self.source_pos = source_pos
-    @jit.elidable
     def tostring(self):
         return '#t' if self.bval else '#f'
     def equal(self, other):

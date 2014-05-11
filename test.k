@@ -510,6 +510,14 @@
   (car (force (stream-filter ($lambda (n) (=? n 1000000))
                              (from 0)))))
 
+; For quick & useless benchmarks.
+#;($define! fib
+  ($lambda (n)
+    ($cond
+      ((=? n 0) 1)
+      ((=? n 1) 1)
+      (#t (+ (fib (- n 1)) (fib (- n 2)))))))
+
 #;($sequence
   (debug-on)
   ($define! x "xx")

@@ -205,9 +205,20 @@ def force(vals, env, cont):
 
 @export('make-keyed-dynamic-variable')
 def make_keyed_dynamic_variable(vals):
+    return make_keyed_variable(vals,
+                               kt.KeyedDynamicBinder,
+                               kt.KeyedDynamicAccessor)
+
+@export('make-keyed-static-variable')
+def make_keyed_static_variable(vals):
+    return make_keyed_variable(vals,
+                               kt.KeyedStaticBinder,
+                               kt.KeyedStaticAccessor)
+
+def make_keyed_variable(vals, binder_class, accessor_class):
     kt.pythonify_list(vals, 0)
-    binder = kt.KeyedDynamicBinder()
-    accessor = kt.KeyedDynamicAccessor(binder)
+    binder = binder_class()
+    accessor = accessor_class(binder)
     return kt.Pair(kt.Applicative(binder),
                    kt.Pair(kt.Applicative(accessor), kt.nil))
 
@@ -404,6 +415,7 @@ _exports['error-continuation'] = kt.error_cont
 _exports['system-error-continuation'] = kt.system_error_cont
 _exports['user-error-continuation'] = kt.user_error_cont
 _exports['unbound-dynamic-key-continuation'] = kt.unbound_dynamic_key_cont
+_exports['unbound-static-key-continuation'] = kt.unbound_static_key_cont
 _exports['type-error-continuation'] = kt.type_error_cont
 _exports['encapsulation-type-error-continuation'] = kt.encapsulation_type_error_cont
 _exports['operand-mismatch-continuation'] = kt.operand_mismatch_cont

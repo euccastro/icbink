@@ -487,6 +487,39 @@ class KeyedDynamicAccessor(Operative):
             prev = prev.prev
         raise KernelException(UnboundDynamicKey(self))
 
+class KeyedStaticBinder(Operative):
+    def combine(self, operands, env, cont):
+        value, env = pythonify_list(operands, 2)
+        check_type(env, Environment)
+        assert isinstance(env, Environment)
+        return cont.plug_reduce(KeyedEnvironment(self, value, env))
+
+class KeyedEnvironment(Environment):
+    def __init__(self, binder, value, parent, source_pos=None):
+        Environment.__init__(self, [parent], {}, source_pos)
+        self.binder = binder
+        self.value = value
+
+class KeyedStaticAccessor(Operative):
+    def __init__(self, binder, source_pos=None):
+        self.binder = binder
+        self.source_pos = source_pos
+    def combine(self, operands, env, cont):
+        pythonify_list(operands, 0)
+        ret = self.find_binding(env)
+        if ret is None:
+            raise KernelException(UnboundStaticKey(self))
+        else:
+            return cont.plug_reduce(ret)
+    def find_binding(self, env):
+        if (isinstance(env, KeyedEnvironment)
+            and env.binder is self.binder):
+            return env.value
+        for parent in env.parents:
+            ret = self.find_binding(parent)
+            if ret is not None:
+                return ret
+        return None
 
 class Continuation(KernelValue):
     type_name = 'continuation'
@@ -745,6 +778,7 @@ operand_mismatch_cont = Continuation(type_error_cont)
 arity_mismatch_cont = Continuation(operand_mismatch_cont)
 symbol_not_found_cont = Continuation(user_error_cont)
 unbound_dynamic_key_cont = Continuation(user_error_cont)
+unbound_static_key_cont = Continuation(user_error_cont)
 add_positive_to_negative_infinity_cont = Continuation(user_error_cont)
 
 # XXX: do we really want a hierarchy of these, or can we just have constructor
@@ -779,6 +813,14 @@ class UnboundDynamicKey(UserError):
     def __init__(self, accessor):
         check_type(accessor, KeyedDynamicAccessor)
         self.message = String("Binder '%s' not in dynamic extent"
+                              % accessor.binder.todisplay())
+        self.irritants = Pair(accessor, nil)
+
+class UnboundStaticKey(UserError):
+    dest_cont = unbound_static_key_cont
+    def __init__(self, accessor):
+        check_type(accessor, KeyedStaticAccessor)
+        self.message = String("Binder '%s' not in scope"
                               % accessor.binder.todisplay())
         self.irritants = Pair(accessor, nil)
 

@@ -488,7 +488,7 @@
   #t
   (promise? (force ($lazy (memoize ($lazy "blah"))))))
 
-($test "simple keyed dynamic variables"
+($test "simple keyed dynamic variable"
   "res"
   ($let (((binder accessor) (make-keyed-dynamic-variable)))
     (binder
@@ -499,6 +499,16 @@
 ($test-raises "unbound dynamic key"
   unbound-dynamic-key-continuation
   ($let (((binder accessor) (make-keyed-dynamic-variable)))
+    (accessor)))
+
+($test "simple keyed static variable"
+  "res"
+  ($let (((binder accessor) (make-keyed-static-variable)))
+    (eval (list accessor) (binder "res" (get-current-environment)))))
+
+($test-raises "unbound static key"
+  unbound-static-key-continuation
+  ($let (((binder accessor) (make-keyed-static-variable)))
     (accessor)))
 
 ; Commented out by default because this one takes forever to run.  This is to

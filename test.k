@@ -484,6 +484,10 @@
   (force p2)
   (force p1))
 
+($test "promise inside memoize doesn't get chain-forced"
+  #t
+  (promise? (force ($lazy (memoize ($lazy "blah"))))))
+
 ; Commented out by default because this one takes forever to run.  This is to
 ; test that chains of forced promises run in constant space.  To convince
 ; yourself of this fact, uncomment this, and run this side by side with

@@ -1,13 +1,18 @@
 Main concepts not done yet:
-    Encapsulations
-    Futures
     Static and dynamic keyed variables
+    Ports
+
+Go back and revisit the full R-1RK for compliance.
 
 More tests for everything, esp. guarded continuations.
     Pilfer tests from SINK, Klisp and others.
         Maybe when I get closer to claiming feature completeness?
         Try and compile a pure-Kernel test suite that other implementations can use to test for conformance?
             Community effort?
+
+Better error messages:
+    source_pos
+    jump right into debugger?
 
 --- Postponed
 

@@ -41,10 +41,10 @@
 
 ($define! $or?
   ($vau x e
-    (cond ((null? x) #f)
-          ((null? (cdr x)) (eval (car x) e))
-          ((eval (car x) e) #t)
-          (#t (apply (wrap $or?) (cdr x) e)))))
+    ($cond ((null? x) #f)
+           ((null? (cdr x)) (eval (car x) e))
+           ((eval (car x) e) #t)
+           (#t (apply (wrap $or?) (cdr x) e)))))
 
 ($define! get-current-environment
   ($vau () e e))

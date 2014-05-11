@@ -488,6 +488,19 @@
   #t
   (promise? (force ($lazy (memoize ($lazy "blah"))))))
 
+($test "simple keyed dynamic variables"
+  "res"
+  ($let (((binder accessor) (make-keyed-dynamic-variable)))
+    (binder
+      "res"
+      ($lambda ()
+        (accessor)))))
+
+($test-raises "unbound dynamic key"
+  unbound-dynamic-key-continuation
+  ($let (((binder accessor) (make-keyed-dynamic-variable)))
+    (accessor)))
+
 ; Commented out by default because this one takes forever to run.  This is to
 ; test that chains of forced promises run in constant space.  To convince
 ; yourself of this fact, uncomment this, and run this side by side with

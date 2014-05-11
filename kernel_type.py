@@ -280,7 +280,7 @@ class Combiner(KernelValue):
 
 class Operative(Combiner):
     type_name = 'operative'
-    pass
+    name = None
 
 class CompoundOperative(Operative):
     def __init__(self, formals, eformal, exprs, static_env, source_pos=None, name=None):
@@ -465,6 +465,28 @@ class Promise(KernelValue):
             return (self.data.val,
                     self.data.env,
                     HandlePromiseResultCont(self, cont))
+
+class KeyedDynamicBinder(Operative):
+    def combine(self, operands, env, cont):
+        value, thunk = pythonify_list(operands, 2)
+        return thunk.combine(nil,
+                             Environment([]),
+                             KeyedDynamicCont(self, value, cont))
+
+class KeyedDynamicAccessor(Operative):
+    def __init__(self, binder, source_pos=None):
+        self.binder = binder
+        self.source_pos = source_pos
+    def combine(self, operands, env, cont):
+        pythonify_list(operands, 0)
+        prev = cont
+        while prev is not None:
+            if (isinstance(prev, KeyedDynamicCont)
+                and prev.binder is self.binder):
+                return cont.plug_reduce(prev.value)
+            prev = prev.prev
+        raise KernelException(UnboundDynamicKey(self))
+
 
 class Continuation(KernelValue):
     type_name = 'continuation'
@@ -690,6 +712,12 @@ class HandlePromiseResultCont(Continuation):
             self.promise.data.env = None
             return self.prev.plug_reduce(val)
 
+class KeyedDynamicCont(Continuation):
+    def __init__(self, binder, value, prev, source_pos=None):
+        Continuation.__init__(self, prev, source_pos)
+        self.binder = binder
+        self.value = value
+
 def car(val):
     assert isinstance(val, Pair), "car on non-pair: %s" % val
     return val.car
@@ -716,6 +744,7 @@ encapsulation_type_error_cont = Continuation(type_error_cont)
 operand_mismatch_cont = Continuation(type_error_cont)
 arity_mismatch_cont = Continuation(operand_mismatch_cont)
 symbol_not_found_cont = Continuation(user_error_cont)
+unbound_dynamic_key_cont = Continuation(user_error_cont)
 add_positive_to_negative_infinity_cont = Continuation(user_error_cont)
 
 # XXX: do we really want a hierarchy of these, or can we just have constructor
@@ -744,6 +773,14 @@ class NotFound(UserError):
         check_type(symbol, Symbol)
         self.message = String("Symbol '%s' not found" % symbol.todisplay())
         self.irritants = Pair(symbol, nil)
+
+class UnboundDynamicKey(UserError):
+    dest_cont = unbound_dynamic_key_cont
+    def __init__(self, accessor):
+        check_type(accessor, KeyedDynamicAccessor)
+        self.message = String("Binder '%s' not in dynamic extent"
+                              % accessor.binder.todisplay())
+        self.irritants = Pair(accessor, nil)
 
 class KernelTypeError(UserError):
     dest_cont = type_error_cont

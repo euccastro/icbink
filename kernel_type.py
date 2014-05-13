@@ -178,7 +178,10 @@ def get_interned(name):
         ret = _symbol_table[name] = Symbol(name)
         return ret
 
-class Null(KernelValue):
+class List(KernelValue):
+    pass
+
+class Null(List):
     type_name = 'null'
     def tostring(self):
         return "()"
@@ -235,7 +238,7 @@ def is_true(kv):
 def is_false(kv):
     return false.equal(kv)
 
-class Pair(KernelValue):
+class Pair(List):
     type_name = 'pair'
     _immutable_fields_ = ['car', 'cdr']
     simple = False

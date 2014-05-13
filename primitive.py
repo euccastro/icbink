@@ -1,6 +1,6 @@
 from itertools import product
 
-from rpython.rlib import jit, rstring
+from rpython.rlib import jit, rstring, unroll
 
 import debug
 import kernel_type as kt
@@ -9,19 +9,32 @@ import parse
 
 _exports = {}
 
-def export(name, simple=True):
+def export(name, args=None, simple=True):
     operative = name.startswith("$")
     if operative:
         simple = False
     def wrapper(fn):
-        if simple:
-            comb = kt.SimplePrimitive(fn, name)
+        if args is None:
+            wrapped = fn
         else:
-            comb = kt.Primitive(fn, name)
+            def wrapped(otree, *etc):
+                args_tuple = ()
+                unroll_argtypes = unroll.unrolling_iterable(enumerate(args))
+                for i, type_ in unroll_argtypes:
+                    arg = otree.car
+                    otree = otree.cdr
+                    kt.check_type(arg, type_)
+                    args_tuple += (arg,)
+                args_tuple += etc
+                return fn(*args_tuple)
+        if simple:
+            comb = kt.SimplePrimitive(wrapped, name)
+        else:
+            comb = kt.Primitive(wrapped, name)
         if not operative:
             comb = kt.Applicative(comb)
         _exports[name] = comb
-        return fn
+        return wrapped
     return wrapper
 
 @export('string-append')
@@ -33,18 +46,16 @@ def string_append(vals):
         s.append(v.strval)
     return kt.String(s.build())
 
-@export('continuation->applicative')
-def continuation2applicative(vals):
-    cont, = kt.pythonify_list(vals, 1)
-    kt.check_type(cont, kt.Continuation)
+@export('continuation->applicative', args=[kt.Continuation])
+def continuation2applicative(cont):
     return kt.Applicative(kt.ContWrapper(cont))
 
-@export('guard-continuation', simple=False)
-def guard_continuation(vals, env, cont):
-    entry_guards, cont_to_guard, exit_guards = kt.pythonify_list(vals)
+@export('guard-continuation',
+        [kt.List, kt.Continuation, kt.List],
+        simple=False)
+def guard_continuation(entry_guards, cont_to_guard, exit_guards, env, cont):
     check_guards(entry_guards)
     check_guards(exit_guards)
-    kt.check_type(cont_to_guard, kt.Continuation)
     outer_cont = kt.OuterGuardCont(entry_guards, env, cont_to_guard)
     inner_cont = kt.InnerGuardCont(exit_guards, env, outer_cont)
     return inner_cont, env, cont
@@ -77,44 +88,36 @@ def vau(operands, env, cont):
     exprs = cdr.cdr
     return cont.plug_reduce(kt.CompoundOperative(formals, eformals, exprs, env))
 
-@export('$if')
-def if_(operands, env, cont):
-    test, consequent, alternative = kt.pythonify_list(operands)
+@export('$if', [kt.KernelValue, kt.KernelValue, kt.KernelValue])
+def if_(test, consequent, alternative, env, cont):
     return test, env, kt.IfCont(consequent, alternative, env, cont)
 
-@export('equal?')
-def equalp(vals):
-    o1, o2 = kt.pythonify_list(vals)
+@export('equal?', [kt.KernelValue, kt.KernelValue])
+def equalp(o1, o2):
     return kt.true if o1.equal(o2) else kt.false
 
-@export('cons')
-def cons(vals):
-    car, cdr = kt.pythonify_list(vals)
+@export('cons', [kt.KernelValue, kt.KernelValue])
+def cons(car, cdr):
     return kt.Pair(car, cdr)
 
-@export('eval', simple=False)
-def eval_(vals, env_ignore, cont):
-    expr, env = kt.pythonify_list(vals)
+@export('eval', [kt.KernelValue, kt.Environment], simple=False)
+def eval_(expr, env, _, cont):
     return expr, env, cont
 
 @export('make-environment')
 def make_environment(vals):
     return kt.Environment(kt.pythonify_list(vals))
 
-@export('$define!')
-def define(vals, env, cont):
-    definiend, expression = kt.pythonify_list(vals)
+@export('$define!', [kt.KernelValue, kt.KernelValue])
+def define(definiend, expression, env, cont):
     return expression, env, kt.DefineCont(definiend, env, cont)
 
-@export('wrap')
-def wrap(vals):
-    combiner, = kt.pythonify_list(vals, 1)
+@export('wrap', [kt.Combiner])
+def wrap(combiner):
     return kt.Applicative(combiner)
 
-@export('unwrap')
-def unwrap(vals):
-    applicative, = kt.pythonify_list(vals, 1)
-    kt.check_type(applicative, kt.Applicative)
+@export('unwrap', [kt.Applicative])
+def unwrap(applicative):
     return applicative.wrapped_combiner
 
 @export('list')
@@ -167,102 +170,48 @@ def apply_(vals, env_ignore, cont):
 def cond(vals, env, cont):
     return kt.cond(vals, env, cont)
 
-@export('call/cc', simple=False)
-def call_with_cc(vals, env, cont):
-    applicative, = kt.pythonify_list(vals)
-    kt.check_type(applicative, kt.Applicative)
+@export('call/cc', [kt.Applicative], simple=False)
+def call_with_cc(applicative, env, cont):
     return kt.Pair(applicative, kt.Pair(cont, kt.nil)), env, cont
 
-@export('symbol->string')
-def symbol2string(vals):
-    symbol, = kt.pythonify_list(vals)
-    kt.check_type(symbol, kt.Symbol)
-    assert isinstance(symbol, kt.Symbol)
+@export('symbol->string', [kt.Symbol])
+def symbol2string(symbol):
     return kt.String(symbol.symval)
 
-@export('make-encapsulation-type')
-def make_encapsulation_type(vals):
-    kt.pythonify_list(vals, 0)
+@export('make-encapsulation-type', [])
+def make_encapsulation_type():
     return kt.EncapsulationType().create_methods()
 
-@export('$lazy', simple=False)
-def lazy(vals, env, cont):
-    expr, = kt.pythonify_list(vals, 1)
+@export('$lazy', [kt.KernelValue], simple=False)
+def lazy(expr, env, cont):
     return cont.plug_reduce(kt.Promise(expr, env))
 
-@export('memoize')
-def memoize(vals):
-    val, = kt.pythonify_list(vals, 1)
+@export('memoize', [kt.KernelValue])
+def memoize(val):
     return kt.Promise(val, None)
 
-@export('force', simple=False)
-def force(vals, env, cont):
-    val, = kt.pythonify_list(vals, 1)
+@export('force', [kt.KernelValue], simple=False)
+def force(val, env, cont):
     if isinstance(val, kt.Promise):
         return val.force(cont)
     else:
         return cont.plug_reduce(val)
 
-@export('make-keyed-dynamic-variable')
-def make_keyed_dynamic_variable(vals):
-    return make_keyed_variable(vals,
-                               kt.KeyedDynamicBinder,
+@export('make-keyed-dynamic-variable', [])
+def make_keyed_dynamic_variable():
+    return make_keyed_variable(kt.KeyedDynamicBinder,
                                kt.KeyedDynamicAccessor)
 
-@export('make-keyed-static-variable')
-def make_keyed_static_variable(vals):
-    return make_keyed_variable(vals,
-                               kt.KeyedStaticBinder,
+@export('make-keyed-static-variable', [])
+def make_keyed_static_variable():
+    return make_keyed_variable(kt.KeyedStaticBinder,
                                kt.KeyedStaticAccessor)
 
-def make_keyed_variable(vals, binder_class, accessor_class):
-    kt.pythonify_list(vals, 0)
+def make_keyed_variable(binder_class, accessor_class):
     binder = binder_class()
     accessor = accessor_class(binder)
     return kt.Pair(kt.Applicative(binder),
                    kt.Pair(kt.Applicative(accessor), kt.nil))
-
-# Not standard Kernel functions; for debugging only.
-
-@export('print')
-def print_(val):
-    if isinstance(val, kt.Pair):
-        for v in kt.iter_list(val):
-            print v.todisplay(),
-    else:
-        assert kt.is_nil(val)
-    return kt.inert
-
-@export('println')
-def println(val):
-    print_(val)
-    print
-    return kt.inert
-
-class TestError(Exception):
-    def __init__(self, val):
-        assert isinstance(val, kt.KernelValue)
-        self.val = val
-
-# XXX: integrate into error handling system?  start debug REPL?
-@export('test-error')
-def test_error(val):
-    print "ERROR: ",
-    println(val)
-    raise TestError(val)
-    return kt.inert
-
-@export('debug-on')
-def _debug_on(val):
-    assert kt.is_nil(val)
-    debug.start_stepping()
-    return kt.inert
-
-@export('debug-off')
-def _debug_off(val):
-    assert kt.is_nil(val)
-    debug.stop_stepping()
-    return kt.inert
 
 @export('+')
 def add(vals):
@@ -323,6 +272,48 @@ def lteq(vals):
         latest = v
     return kt.true
 
+# Not standard Kernel functions; for debugging only.
+
+@export('print')
+def print_(val):
+    if isinstance(val, kt.Pair):
+        for v in kt.iter_list(val):
+            print v.todisplay(),
+    else:
+        assert kt.is_nil(val)
+    return kt.inert
+
+@export('println')
+def println(val):
+    print_(val)
+    print
+    return kt.inert
+
+class TestError(Exception):
+    def __init__(self, val):
+        assert isinstance(val, kt.KernelValue)
+        self.val = val
+
+# XXX: integrate into error handling system?  start debug REPL?
+@export('test-error')
+def test_error(val):
+    print "ERROR: ",
+    println(val)
+    raise TestError(val)
+    return kt.inert
+
+@export('debug-on')
+def _debug_on(val):
+    assert kt.is_nil(val)
+    debug.start_stepping()
+    return kt.inert
+
+@export('debug-off')
+def _debug_off(val):
+    assert kt.is_nil(val)
+    debug.stop_stepping()
+    return kt.inert
+
 class AdHocException(Exception):
     def __init__(self, val):
         self.val = val
@@ -366,7 +357,6 @@ def load(path, env, cont=None):
 def check_guards(guards):
     for guard in kt.iter_list(guards):
         selector, interceptor = kt.pythonify_list(guard)
-        #XXX: kernelized error handling
         kt.check_type(selector, kt.Continuation)
         kt.check_type(interceptor, kt.Applicative)
         kt.check_type(interceptor.wrapped_combiner, kt.Operative)

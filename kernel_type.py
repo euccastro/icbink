@@ -763,11 +763,11 @@ def cdr(val):
 
 # caar, cadr, ..., caadr, ..., cdddddr.
 for length in range(2, 6):
-    for absoup in product('ad', repeat=length):
+    for adsoup in product('ad', repeat=length):
         exec("def c%sr(val): return %sval%s"
-             % (''.join(absoup),
-                ''.join('c%sr(' % each for each in absoup),
-                ''.join(')' for each in absoup)))
+             % (''.join(adsoup),
+                ''.join('c%sr(' % each for each in adsoup),
+                ''.join(')' for each in adsoup)))
 
 # XXX: these don't feel like they belong in a kernel type module, but placing
 # them in primitive.py would create a cyclic dependency.

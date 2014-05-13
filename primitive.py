@@ -145,8 +145,8 @@ def lambda_(vals, env, cont):
 
 # car, cdr, caar, cadr, ..., caadr, ..., cdddddr.
 for length in range(1, 6):
-    for absoup in product('ad', repeat=length):
-        name = 'c%sr' % ''.join(absoup)
+    for adsoup in product('ad', repeat=length):
+        name = 'c%sr' % ''.join(adsoup)
         exec("""
 @export('%s')
 def %s(val):

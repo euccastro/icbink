@@ -277,7 +277,7 @@ def add(vals):
 def sub(vals):
     ls = kt.pythonify_list(vals)
     if len(ls) < 2:
-        raise kt.KernelException(kt.ArityMismatch('>=2', vals))
+        kt.signal_arity_mismatch('>=2', vals)
     accum = ls[0]
     for v in ls[1:]:
         kt.check_type(v, kt.Number)

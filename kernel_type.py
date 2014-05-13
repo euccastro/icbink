@@ -22,7 +22,7 @@ class KernelValue(object):
     def interpret_simple(self, env):
         return self
     def combine(self, operands, env, cont):
-        raise KernelException(KernelTypeError(Combiner, self))
+        signal_type_error(Combiner, self)
 
 #XXX: Unicode
 class String(KernelValue):
@@ -62,7 +62,7 @@ class ExactPositiveInfinity(Infinity):
         return False
     def add(self, other):
         if isinstance(other, ExactNegativeInfinity):
-            raise KernelException(AddPositiveToNegativeInfinityError(self, other))
+            signal_add_positive_to_negative_infinity_error(self, other)
         else:
             return self
     def neg(self):
@@ -79,7 +79,7 @@ class ExactNegativeInfinity(Infinity):
         return not isinstance(other, ExactNegativeInfinity)
     def add(self, other):
         if isinstance(other, ExactPositiveInfinity):
-            raise KernelException(AddPositiveToNegativeInfinityError(other, self))
+            signal_add_positive_to_negative_infinity_error(other, self)
         else:
             return self
     def neg(self):
@@ -391,9 +391,9 @@ class Environment(KernelValue):
                     ret = parent.lookup(symbol)
                     return ret
                 except KernelException as e:
-                    if not isinstance(e.val, NotFound):
+                    if e.val.dest_cont is not symbol_not_found_cont:
                         raise
-            raise KernelException(NotFound(symbol))
+            signal_symbol_not_found(symbol)
 
 class EncapsulationType(KernelValue):
     def create_methods(self, source_pos=None):
@@ -439,7 +439,7 @@ class EncapsulationAccessor(EncapsulationMethod):
         if wrapped.encapsulation_type is self.encapsulation_type:
             return cont.plug_reduce(wrapped.val)
         else:
-            raise KernelException(EncapsulationTypeError(self, wrapped))
+            signal_encapsulation_type_error(self, wrapped)
 
 # Copying a trick from the reference implementation in the R-1RK.
 #
@@ -485,7 +485,7 @@ class KeyedDynamicAccessor(Operative):
                 and prev.binder is self.binder):
                 return cont.plug_reduce(prev.value)
             prev = prev.prev
-        raise KernelException(UnboundDynamicKey(self))
+        signal_unbound_dynamic_key(self)
 
 class KeyedStaticBinder(Operative):
     def combine(self, operands, env, cont):
@@ -508,7 +508,7 @@ class KeyedStaticAccessor(Operative):
         pythonify_list(operands, 0)
         ret = self.find_binding(env)
         if ret is None:
-            raise KernelException(UnboundStaticKey(self))
+            signal_unbound_static_key(self)
         else:
             return cont.plug_reduce(ret)
     def find_binding(self, env):
@@ -687,11 +687,11 @@ def match_parameter_tree(param_tree, operand_tree, env):
     elif is_nil(param_tree):
         if not is_nil(operand_tree):
             # XXX: this only shows the tail of the mismatch
-            raise KernelException(OperandMismatch(param_tree, operand_tree))
+            signal_operand_mismatch(param_tree, operand_tree)
     elif isinstance(param_tree, Pair):
         if not isinstance(operand_tree, Pair):
             # XXX: this only shows the tail of the mismatch
-            raise KernelException(OperandMismatch(param_tree, operand_tree))
+            signal_operand_mismatch(param_tree, operand_tree)
         match_parameter_tree(param_tree.car, operand_tree.car, env)
         match_parameter_tree(param_tree.cdr, operand_tree.cdr, env)
 
@@ -781,94 +781,73 @@ unbound_dynamic_key_cont = Continuation(user_error_cont)
 unbound_static_key_cont = Continuation(user_error_cont)
 add_positive_to_negative_infinity_cont = Continuation(user_error_cont)
 
-# XXX: do we really want a hierarchy of these, or can we just have constructor
-# functions for ErrorObject?
 class ErrorObject(KernelValue):
     type_name = 'error-object'
-    dest_cont = error_cont
-    def __init__(self, message, irritants):
-        check_type(message, String)
+    def __init__(self, dest_cont, message, irritants):
+        self.dest_cont = dest_cont
+        assert isinstance(message, str)
         if not is_nil(irritants):
             check_type(irritants, Pair)
-        self.message = message
+        self.message = String(message)
         self.irritants = irritants
     def todisplay(self):
         return "*** ERROR ***: %s" % self.message.todisplay()
 
-class UserError(ErrorObject):
-    dest_cont = user_error_cont
+def raise_(*args):
+    raise KernelException(ErrorObject(*args))
 
-class SystemError(ErrorObject):
-    dest_cont = system_error_cont
+def signal_symbol_not_found(symbol):
+    raise_(symbol_not_found_cont,
+           "Symbol '%s' not found" % symbol.todisplay(),
+           Pair(symbol, nil))
 
-class NotFound(UserError):
-    dest_cont = symbol_not_found_cont
-    def __init__(self, symbol):
-        check_type(symbol, Symbol)
-        self.message = String("Symbol '%s' not found" % symbol.todisplay())
-        self.irritants = Pair(symbol, nil)
+def signal_unbound_dynamic_key(accessor):
+    raise_(unbound_dynamic_key_cont,
+           "Binder '%s' not in dynamic extent" % accessor.binder.todisplay(),
+            Pair(accessor, nil))
 
-class UnboundDynamicKey(UserError):
-    dest_cont = unbound_dynamic_key_cont
-    def __init__(self, accessor):
-        check_type(accessor, KeyedDynamicAccessor)
-        self.message = String("Binder '%s' not in dynamic extent"
-                              % accessor.binder.todisplay())
-        self.irritants = Pair(accessor, nil)
+def signal_unbound_static_key(accessor):
+    raise_(unbound_static_key_cont,
+           "Binder '%s' not in scope" % accessor.binder.todisplay(),
+            Pair(accessor, nil))
 
-class UnboundStaticKey(UserError):
-    dest_cont = unbound_static_key_cont
-    def __init__(self, accessor):
-        check_type(accessor, KeyedStaticAccessor)
-        self.message = String("Binder '%s' not in scope"
-                              % accessor.binder.todisplay())
-        self.irritants = Pair(accessor, nil)
+def signal_type_error(expected_type, actual_value):
+    raise_(type_error_cont,
+           "Expected object of type %s, but got %s instead"
+               % (expected_type.type_name,
+                  actual_value.tostring()),
+           Pair(String(expected_type.type_name),
+                              Pair(actual_value, nil)))
 
-class KernelTypeError(UserError):
-    dest_cont = type_error_cont
-    def __init__(self, expected_type, actual_value):
-        self.message = String("Expected object of type %s, but got %s instead"
-                              % (expected_type.type_name,
-                                 actual_value.tostring()))
-        self.irritants = Pair(String(expected_type.type_name),
-                              Pair(actual_value, nil))
-
-class EncapsulationTypeError(KernelTypeError):
-    dest_cont = encapsulation_type_error_cont
-    def __init__(self, expected_type, actual_value):
-        self.message = String("Expected encapsulated object of type %s, but got %s instead"
-                              % (expected_type.tostring(),
-                                 actual_value.tostring()))
-        self.irritants = Pair(expected_type,
-                              Pair(actual_value, nil))
+def signal_encapsulation_type_error(expected_type, actual_value):
+    raise_(encapsulation_type_error_cont,
+           "Expected encapsulated object of type %s, but got %s instead"
+               % (expected_type.tostring(),
+                  actual_value.tostring()),
+           Pair(expected_type, Pair(actual_value, nil)))
 
 def check_type(val, type_):
     if not isinstance(val, type_):
-        raise KernelException(KernelTypeError(type_, val))
+        signal_type_error(type_, val)
 
-class OperandMismatch(KernelTypeError):
-    dest_cont = operand_mismatch_cont
-    def __init__(self, expected_params, actual_operands):
-        self.message = String("%s doesn't match expected param tree %s"
-                              % (actual_operands.tostring(),
-                                 expected_params.tostring()))
-        self.irritants = Pair(expected_params, Pair(actual_operands, nil))
+def signal_operand_mismatch(expected_params, actual_operands):
+    raise_(operand_mismatch_cont,
+           "%s doesn't match expected param tree %s"
+               % (actual_operands.tostring(),
+                  expected_params.tostring()),
+           Pair(expected_params, Pair(actual_operands, nil)))
 
-class ArityMismatch(OperandMismatch):
-    dest_cont = arity_mismatch_cont
-    def __init__(self, expected_arity, actual_arguments):
-        expected_arity = String(expected_arity)
-        self.message = String("expected %s arguments but got %s"
-                              % (expected_arity.tostring(),
-                                 actual_arguments.tostring()))
-        self.irritants = Pair(expected_arity, Pair(actual_arguments, nil))
+def signal_arity_mismatch(expected_arity, actual_arguments):
+    raise_(arity_mismatch_cont,
+           "expected %s arguments but got %s"
+               % (expected_arity,
+                  actual_arguments.tostring()),
+           Pair(String(expected_arity), Pair(actual_arguments, nil)))
 
-class AddPositiveToNegativeInfinityError(UserError):
-    dest_cont = add_positive_to_negative_infinity_cont
-    def __init__(self, pos, neg):
-        self.message = String("Tried to add positive to negative infinity")
-        # Maybe only useful for source info?
-        self.irritants = Pair(pos, Pair(neg, nil))
+def signal_add_positive_to_negative_infinity_error(pos, neg):
+    raise_(add_positive_to_negative_infinity_cont,
+           "Tried to add positive to negative infinity",
+           Pair(pos, Pair(neg, nil)))
 
 # XXX: Not actual kernel type.
 class KernelExit(Exception):
@@ -894,5 +873,5 @@ def pythonify_list(vals, check_arity=-1):
     for item in iter_list(vals):
         ret.append(item)
     if check_arity != -1 and len(ret) != check_arity:
-        raise KernelException(ArityMismatch(str(check_arity), vals))
+        signal_arity_mismatch(str(check_arity), vals)
     return ret

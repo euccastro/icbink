@@ -9,22 +9,26 @@ import parse
 
 _exports = {}
 
-def export(name, args=None, simple=True):
+def export(name, argtypes=None, simple=True):
     operative = name.startswith("$")
     if operative:
         simple = False
     def wrapper(fn):
-        if args is None:
+        if argtypes is None:
             wrapped = fn
         else:
+            unroll_argtypes = unroll.unrolling_iterable(argtypes)
             def wrapped(otree, *etc):
                 args_tuple = ()
-                unroll_argtypes = unroll.unrolling_iterable(enumerate(args))
-                for i, type_ in unroll_argtypes:
-                    arg = otree.car
-                    otree = otree.cdr
+                rest = otree
+                for type_ in unroll_argtypes:
+                    assert isinstance(rest, kt.Pair)
+                    arg = rest.car
+                    rest = rest.cdr
                     kt.check_type(arg, type_)
+                    assert isinstance(arg, type_)
                     args_tuple += (arg,)
+                assert kt.is_nil(rest)
                 args_tuple += etc
                 return fn(*args_tuple)
         if simple:
@@ -46,7 +50,7 @@ def string_append(vals):
         s.append(v.strval)
     return kt.String(s.build())
 
-@export('continuation->applicative', args=[kt.Continuation])
+@export('continuation->applicative', argtypes=[kt.Continuation])
 def continuation2applicative(cont):
     return kt.Applicative(kt.ContWrapper(cont))
 

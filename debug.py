@@ -21,8 +21,9 @@ class StepHook(DebugHook):
             debug_interaction(env, cont)
     def on_plug_reduce(self, val, cont):
         if cont.source_pos is not None:
-            cont.source_pos.print_()
-            print "<<< RETURN", val.tostring()
+            cont.source_pos.print_("        ")
+            print "        return", val.tostring()
+            print
     def on_abnormal_pass(self,
                          val_tree,
                          src_cont,

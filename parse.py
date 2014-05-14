@@ -61,14 +61,15 @@ class SourcePos(object):
         self.source_file = source_file
         self.line = line
         self.column = column
-    def print_(self):
+    def print_(self, prefix=''):
         # Editors show 1-based line and column numbers, while
         # source_pos objects are 0-based.
-        print "%s, line %s, column %s:" % (self.source_file.path,
-                                           self.line + 1,
-                                           self.column + 1)
-        print self.source_file.lines[self.line]
-        print "%s^" % (" " * self.column)
+        print "%s%s, line %s, column %s:" % (prefix,
+                                               self.source_file.path,
+                                               self.line + 1,
+                                               self.column + 1)
+        print "%s%s" % (prefix, self.source_file.lines[self.line])
+        print "%s%s^" % (prefix, (" " * self.column))
 
 class Visitor(RPythonVisitor):
     def __init__(self, source_file=None):

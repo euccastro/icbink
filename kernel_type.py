@@ -558,18 +558,17 @@ class BaseErrorCont(Continuation):
 def evaluate_arguments(vals, env, cont):
     if isinstance(vals, Pair):
         if is_nil(vals.cdr):
-            return vals.car, env, NoMoreArgsCont(env, cont)
+            return vals.car, env, NoMoreArgsCont(env, cont, vals.car.source_pos)
         else:
-            return vals.car, env, EvalArgsCont(vals.cdr, env, cont)
+            return vals.car, env, EvalArgsCont(vals.cdr, env, cont, vals.car.source_pos)
     else:
         return vals, env, cont
 
 class EvalArgsCont(Continuation):
     def __init__(self, exprs, env, prev, source_pos=None):
-        Continuation.__init__(self, prev)
+        Continuation.__init__(self, prev, source_pos)
         self.exprs = exprs
         self.env = env
-        self.source_pos = source_pos
     def _plug_reduce(self, val):
         return evaluate_arguments(self.exprs,
                                   self.env,
@@ -577,9 +576,8 @@ class EvalArgsCont(Continuation):
 
 class NoMoreArgsCont(Continuation):
     def __init__(self, env, prev, source_pos=None):
-        Continuation.__init__(self, prev)
+        Continuation.__init__(self, prev, source_pos)
         self.env = env
-        self.source_pos = source_pos
     def _plug_reduce(self, val):
         return self.prev.plug_reduce(Pair(val, nil))
 
@@ -635,12 +633,11 @@ def sequence(exprs, env, cont):
         return exprs.car, env, SequenceCont(exprs.cdr, env, cont)
 
 class IfCont(Continuation):
-    def __init__(self, consequent, alternative, env, prev, source_pos=None):
+    def __init__(self, consequent, alternative, env, prev):
         Continuation.__init__(self, prev)
         self.consequent = consequent
         self.alternative = alternative
         self.env = env
-        self.source_pos = source_pos
     def _plug_reduce(self, val):
         if is_true(val):
             return self.consequent, self.env, self.prev

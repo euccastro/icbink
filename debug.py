@@ -149,6 +149,7 @@ def debug_interaction(env, cont):
                         resume_env = env
                     else:
                         # Body of a compound operative.
+                        # XXX: this is *not* guaranteed to get us the environment of the caller.  better dispense with resume_env altogether and only stop for evaluations on on_eval.
                         resume_env, = env.parents
                     _state.step_hook = ResumeContHook(resume_env, prev)
                 break

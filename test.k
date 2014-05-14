@@ -544,7 +544,7 @@
 #;($sequence
   (debug-on)
   ($define! x "xx")
-  (println (string-append "a" "b"))
+  (println (string-append "a" x "b"))
   (debug-off))
 
 

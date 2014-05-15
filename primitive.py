@@ -114,7 +114,10 @@ def make_environment(vals):
 
 @export('$define!', [kt.KernelValue, kt.KernelValue])
 def define(definiend, expression, env, cont):
-    return expression, env, kt.DefineCont(definiend, env, cont)
+    return expression, env, kt.DefineCont(definiend,
+                                          env,
+                                          cont,
+                                          expression.source_pos)
 
 @export('wrap', [kt.Combiner])
 def wrap(combiner):

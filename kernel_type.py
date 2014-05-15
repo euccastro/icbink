@@ -267,10 +267,12 @@ class Pair(List):
         s.append(")")
         return s.build()
     def interpret(self, env, cont):
+        if cont.source_pos is None:
+            cont.source_pos = self.source_pos
         return self.car, env, CombineCont(self.cdr,
                                           env,
                                           cont,
-                                          source_pos=self.source_pos)
+                                          source_pos=self.car.source_pos)
     def equal(self, other):
         return (isinstance(other, Pair)
                 and self.car.equal(other.car)
@@ -601,8 +603,6 @@ class ApplyCont(Continuation):
 class CombineCont(Continuation):
     def __init__(self, operands, env, prev, source_pos=None):
         Continuation.__init__(self, prev)
-        if prev.source_pos is None:
-            prev.source_pos = source_pos
         self.operands = operands
         self.env = env
         self.source_pos = source_pos

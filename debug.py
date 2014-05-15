@@ -40,11 +40,12 @@ class ResumeContHook(DebugHook):
         self.env = env
         self.cont = cont
     def on_plug_reduce(self, val, cont):
+        if cont.source_pos is not None:
+            cont.source_pos.print_("        ")
+            print "        return", val.tostring()
+            print
         if cont is self.cont:
-            if cont.source_pos is not None:
-                cont.source_pos.print_()
-            print "<<< RETURN", val.tostring()
-            debug_interaction(self.env, cont)
+            start_stepping()
     def on_abnormal_pass(self,
                          val_tree,
                          src_cont,
@@ -66,6 +67,7 @@ class ResumeContHook(DebugHook):
                             val_tree.tostring(),
                             src_cont.tostring(),
                             dst_cont.tostring())
+                break
 
 class DebugState(object):
     def __init__(self):

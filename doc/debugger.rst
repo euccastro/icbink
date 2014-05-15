@@ -14,6 +14,7 @@ Insert ``(debug-on)`` in the spot where you want to start stepping into the code
 - ``,n``: step over next expression.
 - ``,r``: continue until current form is evaluated (roughly, get out of enclosing parens).
 - ``,c``: continue (stop stepping).
+- ``,c <expr>``: evaluate ``<expr>`` in the current environment, return its value instead of that of the expression we were about to evaluate.
 - ``,E``: print local environment and all its parents (indented, separated by ``---``).
 - ``,e``: print local environment only.
 - (any kernel expression): evaluate the expression in the local environment.

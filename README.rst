@@ -4,7 +4,7 @@
 
 This aims to be a practical and robust (but not necessarily complete) implementation of `The Kernel Programming Language`_ in RPython_.  This should give us an optimizing JIT compiler almost for free (see `Laurence Tratt's excellent article`_ for more details.)
 
-At the moment guarded continuations look like they're working.  We also have the beginnings of a rudimentary command-line debugger.
+At the moment guarded continuations look like they're working.  We also have the beginnings of a rudimentary command-line debugger_.
 
 Sources of inspiration/pilfering:
 
@@ -26,3 +26,4 @@ Sources of inspiration/pilfering:
 .. _SINK: http://web.cs.wpi.edu/~jshutt/sink-01m10.tar.gz
 .. _Lisp in Small Pieces: http://en.wikipedia.org/wiki/Lisp_in_Small_Pieces
 .. _Klisp: http://klisp.org
+.. _debugger: https://github.com/euccastro/icbink/blob/master/doc/debugger.rst

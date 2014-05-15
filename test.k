@@ -548,6 +548,16 @@
     (println (string-append a x b "d" c)))
   (debug-off))
 
+; Uncomment to test the debug error handler.
+#;(println
+  (string-append
+    "a"
+    (string-append
+      "b"
+      this-symbol-is-not-bound
+      "d")
+    "e"))
+
 
 (println)
 (println "All OK.")

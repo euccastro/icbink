@@ -101,7 +101,6 @@ class DebugState(object):
                                             exiting,
                                             entering)
     def on_error(self, e):
-        print "*** ERROR *** :", e.message, e
         print "Trying to evaluate %s" % e.val.tostring()
         if e.val.source_pos:
             e.val.source_pos.print_()

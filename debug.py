@@ -3,7 +3,7 @@ import os
 
 class DebugHook(object):
     def on_eval(self, val, env, cont):
-        pass
+        return val, env, cont
     def on_plug_reduce(self, val, cont):
         pass
     def on_abnormal_pass(self,
@@ -23,7 +23,9 @@ class StepHook(DebugHook):
     def on_eval(self, val, env, cont):
         if is_user_source(val.source_pos):
             val.source_pos.print_()
-            debug_interaction(env, cont)
+            return debug_interaction(env, cont)
+        else:
+            return val, env, cont
     def on_plug_reduce(self, val, cont):
         if is_user_source(cont.source_pos):
             cont.source_pos.print_("        ")
@@ -79,8 +81,10 @@ class DebugState(object):
         self.step_hook = None
         self.breakpoints = []  #XXX
     def on_eval(self, val, env, cont):
-        if self.step_hook is not None:
-            self.step_hook.on_eval(val, env, cont)
+        if self.step_hook is None:
+            return val, env, cont
+        else:
+            return self.step_hook.on_eval(val, env, cont)
     def on_plug_reduce(self, val, cont):
         if self.step_hook is not None:
             self.step_hook.on_plug_reduce(val, cont)
@@ -96,13 +100,18 @@ class DebugState(object):
                                             dst_cont,
                                             exiting,
                                             entering)
-    #XXX never called so far
-    def on_error(self, e, val, env, cont):
+    def on_error(self, e):
         print "*** ERROR *** :", e.message, e
-        print "Trying to evaluate %s" % val.tostring()
-        if val.source_pos:
-            val.source_pos.print_()
-        debug_interaction(env, cont)
+        print "Trying to evaluate %s" % e.val.tostring()
+        if e.val.source_pos:
+            e.val.source_pos.print_()
+        while True:
+            ret = debug_interaction(e.env, e.src_cont)
+            if ret is None:
+                print "You must provide some value to the error continuation,"
+                print "or ,q to exit."
+            else:
+                return ret
 
 def guarded_ad_hoc_cont(cont):
     from parse import parse
@@ -136,9 +145,17 @@ def debug_interaction(env, cont):
                 else:
                     continue
             _state.latest_command = cmd
-            if cmd == ",c":
-                stop_stepping()
-                break
+            if cmd.startswith(",c"):
+                expr_src = cmd[2:].strip()
+                if expr_src:
+                    dbgexprs = parse.parse(expr_src)
+                    assert isinstance(dbgexprs, kt.Pair)
+                    assert kt.is_nil(kt.cdr(dbgexprs))
+                    expr = kt.car(dbgexprs)
+                    return expr, env, cont
+                else:
+                    stop_stepping()
+                    break
             elif cmd == ",s":
                 start_stepping()
                 break

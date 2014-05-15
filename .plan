@@ -1,5 +1,16 @@
-Improve the debug+source_pos story?
-    Maybe begin by documenting how this works now?
+better error handling:
+    install a catch-all error handling continuation
+        so it needs to go above error-continuation
+            call it debug-error-continuation
+            it has no guards?
+                then the error-continuation must pass the error-object down to its parent
+                does it call the error handler in debug.py?
+    add source_pos, additional debugging info to errors
+    debug interaction by default?
+        perhaps as a command-line option?
+    recover from errors?
+        ,c <val> feeds the result back in lieu of what the erroring function would produce?
+            implies storing the origin continuation
 
 Main concepts not done yet:
     Ports
@@ -24,12 +35,6 @@ Documentation for hackers:
 
 case insensitive identifiers
 
-better error handling:
-    add source_pos, additional debugging info to errors
-    debug interaction by default?
-        perhaps as a command-line option?
-    recover from errors?
-        ,c <val> feeds the result back in lieu of what the erroring function would produce?
 
 Better parsing error messages.
 

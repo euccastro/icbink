@@ -751,6 +751,10 @@ class KeyedDynamicCont(Continuation):
         self.binder = binder
         self.value = value
 
+class DebugErrorCont(Continuation):
+    def plug_reduce(self, val):
+        return debug.on_error(val)
+
 def car(val):
     assert isinstance(val, Pair), "car on non-pair: %s" % val
     return val.car
@@ -769,7 +773,8 @@ for length in range(2, 6):
 # XXX: these don't feel like they belong in a kernel type module, but placing
 # them in primitive.py would create a cyclic dependency.
 root_cont = RootCont()
-error_cont = BaseErrorCont(root_cont)
+debug_error_cont = DebugErrorCont(root_cont)
+error_cont = BaseErrorCont(debug_error_cont)
 system_error_cont = Continuation(error_cont)
 user_error_cont = Continuation(error_cont)
 type_error_cont = Continuation(user_error_cont)
@@ -790,6 +795,10 @@ class ErrorObject(KernelValue):
             check_type(irritants, Pair)
         self.message = String(message)
         self.irritants = irritants
+        # Filled in by the evaluator.
+        self.val = None
+        self.env = None
+        self.src_cont = None
     def todisplay(self):
         return "*** ERROR ***: %s" % self.message.todisplay()
 

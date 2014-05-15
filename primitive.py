@@ -335,11 +335,15 @@ def kernel_eval(val, env, cont=None):
     try:
         while True:
             driver.jit_merge_point(val=val, env=env, cont=cont)
-            debug.on_eval(val, env, cont)
+            val, env, cont = debug.on_eval(val, env, cont)
             try:
                 val, env, cont = val.interpret(env, cont)
             except kt.KernelException as e:
-                val, env, cont = kt.abnormally_pass(e.val, cont, e.val.dest_cont)
+                error = e.val
+                error.val = val
+                error.env = env
+                error.src_cont = cont
+                val, env, cont = kt.abnormally_pass(error, cont, e.val.dest_cont)
     except AdHocException as e:
         return e.val
 

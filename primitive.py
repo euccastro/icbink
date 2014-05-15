@@ -335,7 +335,9 @@ def kernel_eval(val, env, cont=None):
     try:
         while True:
             driver.jit_merge_point(val=val, env=env, cont=cont)
-            val, env, cont = debug.on_eval(val, env, cont)
+            val_, env_, cont_ = debug.on_eval(val, env, cont)
+            if val_ is not None:
+                val, env, cont = val_, env_, cont_
             try:
                 val, env, cont = val.interpret(env, cont)
             except kt.KernelException as e:

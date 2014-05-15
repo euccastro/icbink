@@ -106,12 +106,12 @@ class DebugState(object):
         if e.val.source_pos:
             e.val.source_pos.print_()
         while True:
-            ret = debug_interaction(e.env, e.src_cont)
-            if ret is None:
+            val, env, cont = debug_interaction(e.env, e.src_cont)
+            if val is None:
                 print "You must provide some value to the error continuation,"
                 print "or ,q to exit."
             else:
-                return ret
+                return val, env, cont
 
 def guarded_ad_hoc_cont(cont):
     from parse import parse
@@ -193,6 +193,7 @@ def debug_interaction(env, cont):
                     _state.step_hook = old
     except EOFError:
         stop_stepping()
+    return None, None, None
 
 #XXX Adapted from Mariano Guerra's plang; research whether there's equivalent
 #    functionality in rlib.

@@ -41,8 +41,7 @@ class StepHook(DebugHook):
                 dst_cont.tostring())
 
 class ResumeContHook(DebugHook):
-    def __init__(self, env, cont):
-        self.env = env
+    def __init__(self, cont):
         self.cont = cont
     def on_plug_reduce(self, val, cont):
         if is_user_source(cont.source_pos):
@@ -97,6 +96,7 @@ class DebugState(object):
                                             dst_cont,
                                             exiting,
                                             entering)
+    #XXX never called so far
     def on_error(self, e, val, env, cont):
         print "*** ERROR *** :", e.message, e
         print "Trying to evaluate %s" % val.tostring()
@@ -143,7 +143,7 @@ def debug_interaction(env, cont):
                 start_stepping()
                 break
             elif cmd == ",n":
-                _state.step_hook = ResumeContHook(env, cont)
+                _state.step_hook = ResumeContHook(cont)
                 break
             elif cmd == ",r":
                 prev = cont.prev
@@ -152,14 +152,7 @@ def debug_interaction(env, cont):
                 if prev is None:
                     stop_stepping()
                 else:
-                    import kernel_type as kt
-                    if isinstance(cont, kt.EvalArgsCont):
-                        resume_env = env
-                    else:
-                        # Body of a compound operative.
-                        # XXX: this is *not* guaranteed to get us the environment of the caller.  better dispense with resume_env altogether and only stop for evaluations on on_eval.
-                        resume_env, = env.parents
-                    _state.step_hook = ResumeContHook(resume_env, prev)
+                    _state.step_hook = ResumeContHook(prev)
                 break
             elif cmd == ",e":
                 print_bindings(env, recursive=False)

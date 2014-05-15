@@ -14,13 +14,18 @@ class DebugHook(object):
                          entering):
         pass
 
+def is_user_source(source_pos):
+    return (source_pos is not None
+            and source_pos.source_file.path != 'kernel.k'
+            and source_pos.source_file.path != 'extension.k')
+
 class StepHook(DebugHook):
     def on_eval(self, val, env, cont):
-        if val.source_pos is not None:
+        if is_user_source(val.source_pos):
             val.source_pos.print_()
             debug_interaction(env, cont)
     def on_plug_reduce(self, val, cont):
-        if cont.source_pos is not None:
+        if is_user_source(cont.source_pos):
             cont.source_pos.print_("        ")
             print "        return", val.tostring()
             print
@@ -40,7 +45,7 @@ class ResumeContHook(DebugHook):
         self.env = env
         self.cont = cont
     def on_plug_reduce(self, val, cont):
-        if cont.source_pos is not None:
+        if is_user_source(cont.source_pos):
             cont.source_pos.print_("        ")
             print "        return", val.tostring()
             print

@@ -543,8 +543,9 @@
 
 #;($sequence
   (debug-on)
-  ($define! x "xx")
-  (println (string-append "a" x "b"))
+  ($let (((a (b c)) (list "a" (list "b" "c"))))
+    ($define! x "xx")
+    (println (string-append a x b "d" c)))
   (debug-off))
 
 

@@ -1,3 +1,12 @@
 #!/usr/bin/env bash
 
-$(dirname $0)/interpret.py $(dirname $0)/test.k
+if which rlwrap > /dev/null; then
+    wrap=rlwrap
+else
+    echo "rlwrap not found"
+    echo "You may want to install it for readline functionality" \
+         "in the command line."
+    wrap=''
+fi
+
+$wrap $(dirname $0)/interpret.py $(dirname $0)/test.k

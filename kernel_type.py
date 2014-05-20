@@ -626,8 +626,18 @@ class SequenceCont(Continuation):
         return sequence(self.exprs, self.env, self.prev)
 
 def sequence(exprs, env, cont):
+    if is_nil(exprs):
+        return cont.plug_reduce(inert)
     assert isinstance(exprs, Pair), "non-pair sequence: %s" % exprs
     if is_nil(exprs.cdr):
+        # The whole function can be made shorter and simpler if we don't treat
+        # this as a special case, but then we'd be creating an extra
+        # continuation for the last element of a list.  Avoiding that should be
+        # a significant savings since every list has a last element.
+        #
+        # This optimization was taken from Queinnec's LiSP (see README).
+        # I haven't actually measured, yet, how worthy is it when compiling
+        # with JIT enabled.
         return exprs.car, env, cont
     else:
         return exprs.car, env, SequenceCont(exprs.cdr, env, cont)

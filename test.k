@@ -533,6 +533,10 @@
   (car (force (stream-filter ($lambda (n) (=? n 1000000))
                              (from 0)))))
 
+($test "empty sequence"
+  #inert
+  ($sequence))
+
 ; For quick & useless benchmarks.
 #;($define! fib
   ($lambda (n)

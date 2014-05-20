@@ -1,3 +1,14 @@
+Work on compliance with kplts:
+    (load "") should search in the source file where the function is called.
+        the problem is that we don't have access to source_info from within
+        the body of load, since both the function and its arguments are already
+        evaluated.
+        propagate source_info?
+        keep it as an interpreter-wide variable?
+            gets updated as the interpreter finds expressions with source_info
+                how accurate/robust is this?
+            an advantage is that it could come in handy for error reporting
+
 Main concepts not done yet:
     Ports
 

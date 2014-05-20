@@ -765,6 +765,15 @@ class DebugErrorCont(Continuation):
     def plug_reduce(self, val):
         return debug.on_error(val)
 
+class ConstantCont(Continuation):
+    """Ignore the value passed to me; just pass on the one provided in the
+    constructor."""
+    def __init__(self, val, prev):
+        Continuation.__init__(self, prev)
+        self.val = val
+    def _plug_reduce(self, val):
+        return self.prev.plug_reduce(self.val)
+
 def car(val):
     assert isinstance(val, Pair), "car on non-pair: %s" % val
     return val.car
@@ -787,6 +796,7 @@ debug_error_cont = DebugErrorCont(root_cont)
 error_cont = BaseErrorCont(debug_error_cont)
 system_error_cont = Continuation(error_cont)
 user_error_cont = Continuation(error_cont)
+parse_error_cont = Continuation(user_error_cont)
 type_error_cont = Continuation(user_error_cont)
 encapsulation_type_error_cont = Continuation(type_error_cont)
 operand_mismatch_cont = Continuation(type_error_cont)
@@ -814,6 +824,11 @@ class ErrorObject(KernelValue):
 
 def raise_(*args):
     raise KernelException(ErrorObject(*args))
+
+def signal_parse_error(error_string, source_filename):
+    raise_(parse_error_cont,
+           error_string,
+           Pair(String(source_filename), nil))
 
 def signal_symbol_not_found(symbol):
     raise_(symbol_not_found_cont,

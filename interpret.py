@@ -10,7 +10,8 @@ def run(args):
     env = primitive.extended_environment()
     _, filename = args
     try:
-        primitive.load(filename, env, kt.root_cont)
+        program = primitive.parse_file(filename)
+        primitive.kernel_eval(program, env, kt.root_cont)
     except kt.KernelExit:
         pass
     return 0

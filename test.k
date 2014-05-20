@@ -537,6 +537,14 @@
   #inert
   ($sequence))
 
+($test "load"
+  ("overriden" "newly introduced" #inert)
+  ($let* ((to-be-overriden-by-load "hopefully")
+          (load-result (load "test-load.k")))
+    (list to-be-overriden-by-load
+          newly-introduced-by-load
+          load-result)))
+
 ; For quick & useless benchmarks.
 #;($define! fib
   ($lambda (n)

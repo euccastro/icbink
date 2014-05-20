@@ -1,6 +1,8 @@
 from itertools import product
+import os
 
 from rpython.rlib import jit, rstring, unroll
+from rpython.rlib.parsing.parsing import ParseError
 
 import debug
 import kernel_type as kt
@@ -360,12 +362,19 @@ driver = jit.JitDriver(reds=['env', 'cont'],
                        get_printable_location=get_printable_location)
 
 
-def load(path, env, cont=None):
-    src = open(path).read()
-    src_lines = src.split("\n")
-    program = kt.Pair(_ground_env.bindings['$sequence'],
-                      parse.parse(src, path))
-    return kernel_eval(program, env, cont)
+@export('load', [kt.String], simple=False)
+def load_(path, env, cont):
+    try:
+        program = parse_file(path.strval)
+    except ParseError as e:
+        return kt.signal_parse_error(e.nice_error_message(),
+                                     path.strval)
+    return program, env, kt.ConstantCont(kt.inert, cont)
+
+def parse_file(path):
+    src = open(path).read()  # XXX: RPython?
+    return kt.Pair(_ground_env.bindings['$sequence'],
+                   parse.parse(src, path))
 
 def check_guards(guards):
     for guard in kt.iter_list(guards):
@@ -417,6 +426,7 @@ _exports['root-continuation'] = kt.root_cont
 _exports['error-continuation'] = kt.error_cont
 _exports['system-error-continuation'] = kt.system_error_cont
 _exports['user-error-continuation'] = kt.user_error_cont
+_exports['parse-error-continuation'] = kt.parse_error_cont
 _exports['unbound-dynamic-key-continuation'] = kt.unbound_dynamic_key_cont
 _exports['unbound-static-key-continuation'] = kt.unbound_static_key_cont
 _exports['type-error-continuation'] = kt.type_error_cont
@@ -427,9 +437,12 @@ _exports['symbol-not-found-continuation'] = kt.symbol_not_found_cont
 _exports['add-positive-to-negative-infinity-continuation'] = kt.add_positive_to_negative_infinity_cont
 
 _ground_env = kt.Environment([], _exports)
-load("kernel.k", _ground_env)
+
+here = os.path.dirname(__file__)
+
+kernel_eval(parse_file(os.path.join(here, "kernel.k")), _ground_env)
 _extended_env = kt.Environment([_ground_env], {})
-load("extension.k", _extended_env)
+kernel_eval(parse_file(os.path.join(here, "extension.k")), _extended_env)
 
 def standard_value(name):
     return _ground_env.bindings[name]

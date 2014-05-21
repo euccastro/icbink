@@ -364,12 +364,22 @@ driver = jit.JitDriver(reds=['env', 'cont'],
 
 @export('load', [kt.String], simple=False)
 def load_(path, env, cont):
-    try:
-        program = parse_file(path.strval)
-    except ParseError as e:
-        return kt.signal_parse_error(e.nice_error_message(),
-                                     path.strval)
-    return program, env, kt.ConstantCont(kt.inert, cont)
+    # XXX: search some env var like KERNEL_PATH ?
+    dirs_to_try = ['.']
+    if cont.source_pos is not None:
+        local_filename = cont.source_pos.source_file.path
+        if local_filename is not None:
+            dirs_to_try.insert(0, os.path.dirname(local_filename))
+    filename = path.strval
+    for dir_path in dirs_to_try:
+        whole_path = os.path.join(dir_path, filename)
+        if os.path.exists(whole_path):
+            try:
+                program = parse_file(whole_path)
+            except ParseError as e:
+                return kt.signal_parse_error(e.nice_error_message(),
+                                             whole_path)
+            return program, env, kt.ConstantCont(kt.inert, cont)
 
 def parse_file(path):
     src = open(path).read()  # XXX: RPython?

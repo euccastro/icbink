@@ -796,6 +796,7 @@ debug_error_cont = DebugErrorCont(root_cont)
 error_cont = BaseErrorCont(debug_error_cont)
 system_error_cont = Continuation(error_cont)
 user_error_cont = Continuation(error_cont)
+file_not_found_cont = Continuation(user_error_cont)
 parse_error_cont = Continuation(user_error_cont)
 type_error_cont = Continuation(user_error_cont)
 encapsulation_type_error_cont = Continuation(type_error_cont)
@@ -824,6 +825,11 @@ class ErrorObject(KernelValue):
 
 def raise_(*args):
     raise KernelException(ErrorObject(*args))
+
+def signal_file_not_found(filename):
+    raise_(file_not_found_cont,
+           ("file '%s' not found" % filename),
+           Pair(String(filename), nil))
 
 def signal_parse_error(error_string, source_filename):
     raise_(parse_error_cont,

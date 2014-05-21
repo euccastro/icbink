@@ -545,6 +545,18 @@
           newly-introduced-by-load
           load-result)))
 
+($test "load: search source file directory"
+  ("overriden" "newly introduced" #inert)
+  ($let* ((to-be-overriden-by-load "hopefully")
+          (load-result (load "subdir/test-load.k")))
+    (list to-be-overriden-by-load
+          newly-introduced-by-load
+          load-result)))
+
+($test-raises "load: not found"
+  file-not-found-continuation
+  (load "this-filanema-does-not-exist"))
+
 ; For quick & useless benchmarks.
 #;($define! fib
   ($lambda (n)

@@ -558,6 +558,15 @@
     ($define! c "not 3"))
   (list a b c))
 
+($test "$import!"
+  (1 2 3)
+  ($import!
+    ($let ((env (make-environment)))
+      ($set! env (a b c) (list 1 2 3))
+      env)
+    a b c)
+  (list a b c))
+
 ; Add 'subdir' to your KERNELPATH if you want to test this.
 #;($test "load in KERNELPATH"
   ("overriden" "newly introduced" #inert)

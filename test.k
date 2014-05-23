@@ -545,17 +545,19 @@
           newly-introduced-by-load
           load-result)))
 
-($test "load: search source file directory"
+($test-raises "load: not found"
+  file-not-found-continuation
+  (load "this-filanema-does-not-exist"))
+
+; Add 'subdir' to your KERNELPATH if you want to test this.
+#;($test "load in KERNELPATH"
   ("overriden" "newly introduced" #inert)
   ($let* ((to-be-overriden-by-load "hopefully")
-          (load-result (load "subdir/test-load.k")))
+          (load-result (load "test-load2.k")))
     (list to-be-overriden-by-load
           newly-introduced-by-load
           load-result)))
 
-($test-raises "load: not found"
-  file-not-found-continuation
-  (load "this-filanema-does-not-exist"))
 
 ; For quick & useless benchmarks.
 #;($define! fib

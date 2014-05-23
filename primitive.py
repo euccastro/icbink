@@ -1,5 +1,6 @@
 from itertools import product
 
+import os
 from rpython.rlib import jit, rpath, rstring, unroll
 from rpython.rlib.parsing.parsing import ParseError
 
@@ -7,6 +8,7 @@ import debug
 import kernel_type as kt
 import parse
 
+search_paths = ['.'] + os.environ.get('KERNELPATH', '').split(':')
 
 _exports = {}
 
@@ -363,14 +365,9 @@ driver = jit.JitDriver(reds=['env', 'cont'],
 
 @export('load', [kt.String], simple=False)
 def load_(path, env, cont):
-    # XXX: search some env var like KERNEL_PATH ?
-    dirs_to_try = ['.']
-    if cont.source_pos is not None:
-        local_filename = cont.source_pos.source_file.path
-        if local_filename is not None:
-            dirs_to_try.insert(0, rpath.dirname(local_filename))
+    # XXX: have some programmatically editable search path?
     filename = path.strval
-    for dir_path in dirs_to_try:
+    for dir_path in search_paths:
         whole_path = rpath.join(dir_path, [filename])
         if rpath.exists(whole_path):
             try:

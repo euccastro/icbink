@@ -89,3 +89,11 @@
                        (list* list (map1 cadr bindings)))
                  body)
           env)))
+
+($define! $provide!
+  ($vau (symbols . body) env
+    (eval (list $define! symbols
+                (list $let ()
+                      (list* $sequence body)
+                      (list* list symbols)))
+          env)))

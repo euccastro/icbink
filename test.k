@@ -549,6 +549,15 @@
   file-not-found-continuation
   (load "this-filanema-does-not-exist"))
 
+($test "$provide!"
+  (1 2 3)
+  ($define! c 3)
+  ($provide! (a b)
+    ($define! a 1)
+    ($define! b 2)
+    ($define! c "not 3"))
+  (list a b c))
+
 ; Add 'subdir' to your KERNELPATH if you want to test this.
 #;($test "load in KERNELPATH"
   ("overriden" "newly introduced" #inert)

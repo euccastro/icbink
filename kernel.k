@@ -9,19 +9,19 @@
 
 ($define! and?
   ($lambda x
-    (cond ((null? x) #t)
+    ($cond ((null? x) #t)
           ((car x) (and? (cdr x)))
           (#t #f))))
 
 ($define! or?
   ($lambda x
-    (cond ((null? x) #f)
+    ($cond ((null? x) #f)
           ((car x) #t)
           (#t (or? (cdr x))))))
 
 ($define! $and?
   ($vau x e
-    (cond ((null? x) #t)
+    ($cond ((null? x) #t)
           ((null? (cdr x)) (eval (car x) e))
           ((eval (car x) e) (apply (wrap $and?) (cdr x) e))
           (#t #f))))

@@ -245,7 +245,7 @@
                   (list*
                     list
                     new-parent
-                    (map1
+                    (map
                       ($lambda (child)
                         (aux new-parent child))
                       (cdr node)))))))))
@@ -602,6 +602,12 @@
       "d")
     "e"))
 
+(println
+  (map
+    +
+    (list 1 2 3)
+    (list 10 20 30)
+    (list 100 200 300)))
 
 (println)
 (println "All OK.")

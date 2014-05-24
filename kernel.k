@@ -7,14 +7,14 @@
 ($define! map
   ($lambda (fn . lists)
     ($if (null? (car lists))
-        ()
+        ()  ; XXX: check that all other lists are null too, signal error if not.
         (cons (apply fn (map1 car lists))
-              (map fn (map1 cdr lists))))))
+              (apply map (list* fn (map1 cdr lists)))))))
 
 ($define! $let
   ($vau (bindings . body) env
-    (eval (cons (list* $lambda (map1 car bindings) body)
-                (map1 cadr bindings))
+    (eval (cons (list* $lambda (map car bindings) body)
+                (map cadr bindings))
           env)))
 
 ($define! not?
@@ -60,7 +60,7 @@
 
 ($define! for-each
   (wrap ($vau x env
-          (apply map1 x env)
+          (apply map x env)
           #inert)))
 
 ($define! apply-continuation
@@ -85,8 +85,8 @@
   ($vau (bindings . body) env
     (eval (list* $let ()
                  (list $define!
-                       (map1 car bindings)
-                       (list* list (map1 cadr bindings)))
+                       (map car bindings)
+                       (list* list (map cadr bindings)))
                  body)
           env)))
 
@@ -105,3 +105,11 @@
                 symbols
                 (cons list symbols))
           (eval exp env))))
+
+($define! $let-redirect
+  ($vau (exp bindings . body) env
+    (eval (list* (eval (list* $lambda (map car bindings) body)
+                       (eval exp
+                             env))
+                 (map cadr bindings))
+          env)))

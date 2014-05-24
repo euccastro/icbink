@@ -182,17 +182,18 @@ def map_(vals, env, cont):
         args = kt.pythonify_list(vals)
     except kt.NonNullListTail:
         kt.signal_value_error("Argument tree to map is not a list", vals)
-    if len(args) < 2:
-        kt.signal_arity_mismatch(">=2", len(args))
-    app = args[0]
-    kt.check_type(app, kt.Applicative)
-    assert isinstance(app, kt.Applicative)
-    lists = args[1:]
-    return kt.map_(app.wrapped_combiner,
-                   transpose(lists),
-                   0,
-                   env,
-                   cont)
+    else:
+        if len(args) < 2:
+            kt.signal_arity_mismatch(">=2", vals)
+        app = args[0]
+        kt.check_type(app, kt.Applicative)
+        assert isinstance(app, kt.Applicative)
+        lists = args[1:]
+        return kt.map_(app.wrapped_combiner,
+                       transpose(lists),
+                       0,
+                       env,
+                       cont)
 
 def transpose(pyklists):
     """
@@ -206,12 +207,19 @@ def transpose(pyklists):
          (a1n ... amn)]
     """
     try:
-        pypylists = map(kt.pythonify_list, pyklists)
+        pypylists = [kt.pythonify_list(l) for l in pyklists]
     except kt.NonNullListTail as e:
         kt.signal_value_error("Non-list passed to map", e.val)
-    if len(set(map(len, pypylists))) > 1:
-        kt.signal_value_error("Different-sized lists passed to map", klists)
-    return map(kt.kernelify_list, zip(*pypylists))
+    else:
+        ln = len(pypylists[0])
+        for ls in pypylists[1:]:
+            if len(ls) != ln:
+                kt.signal_value_error("Different-sized lists passed to map",
+                                      kt.kernelify_list(pyklists))
+        t = [[l[i] for l in pypylists]
+             for i in range(ln)]
+        return [kt.kernelify_list([l[i] for l in pypylists])
+                for i in range(ln)]
 
 @export('$cond')
 def cond(vals, env, cont):

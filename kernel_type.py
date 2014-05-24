@@ -385,19 +385,21 @@ class Environment(KernelValue):
         assert isinstance(symbol, Symbol), "setting non-symbol: %s" % symbol
         self.bindings[symbol.symval] = value
     def lookup(self, symbol):
-        assert isinstance(symbol, Symbol), "looking up non-symbol: %s" % symbol
-        try:
-            ret = self.bindings[symbol.symval]
-            return ret
-        except KeyError:
-            for parent in self.parents:
-                try:
-                    ret = parent.lookup(symbol)
-                    return ret
-                except KernelException as e:
-                    if e.val.dest_cont is not symbol_not_found_cont:
-                        raise
+        ret = self.lookup_unchecked(symbol)
+        if ret is None:
             signal_symbol_not_found(symbol)
+        else:
+            return ret
+    def lookup_unchecked(self, symbol):
+        assert isinstance(symbol, Symbol), "looking up non-symbol: %s" % symbol
+        ret = self.bindings.get(symbol.symval)
+        if ret is not None:
+            return ret
+        for parent in self.parents:
+            ret = parent.lookup_unchecked(symbol)
+            if ret is not None:
+                return ret
+        return None
 
 class EncapsulationType(KernelValue):
     def create_methods(self, source_pos=None):
@@ -802,6 +804,18 @@ class ConstantCont(Continuation):
         self.val = val
     def _plug_reduce(self, val):
         return self.prev.plug_reduce(self.val)
+
+class BindsCont(Continuation):
+    def __init__(self, pyvals, prev, source_pos=None):
+        Continuation.__init__(self, prev, source_pos)
+        self.pyvals = pyvals
+    def _plug_reduce(self, env):
+        check_type(env, Environment)
+        assert isinstance(env, Environment)
+        for symbol in self.pyvals[1:]:
+            if env.lookup_unchecked(symbol) is None:
+                return self.prev.plug_reduce(false)
+        return self.prev.plug_reduce(true)
 
 def car(val):
     assert isinstance(val, Pair), "car on non-pair: %s" % val

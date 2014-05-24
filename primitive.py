@@ -115,6 +115,16 @@ def eval_(expr, env, _, cont):
 def make_environment(vals):
     return kt.Environment(kt.pythonify_list(vals))
 
+@export('$binds?')
+def binds(vals, env, cont):
+    pyvals = kt.pythonify_list(vals)
+    if len(pyvals) < 1:
+        kt.signal_arity_error(">=1", vals)
+    for symbol in pyvals[1:]:
+        kt.check_type(symbol, kt.Symbol)
+    env_expr = pyvals[0]
+    return env_expr, env, kt.BindsCont(pyvals, cont)
+
 @export('$define!', [kt.KernelValue, kt.KernelValue])
 def define(definiend, expression, env, cont):
     return expression, env, kt.DefineCont(definiend,

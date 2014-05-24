@@ -567,6 +567,15 @@
     a b c)
   (list a b c))
 
+($test "$binds?"
+  (#t #t #t #f #f)
+  (list
+    ($binds? (get-current-environment))
+    ($binds? (get-current-environment) $binds?)
+    ($binds? (get-current-environment) $binds? get-current-environment)
+    ($binds? (get-current-environment) this-symbol-is-not-bound)
+    ($binds? (get-current-environment) $binds? this-symbol-is-not-bound)))
+
 ; Add 'subdir' to your KERNELPATH if you want to test this.
 #;($test "load in KERNELPATH"
   ("overriden" "newly introduced" #inert)

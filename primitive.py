@@ -321,7 +321,7 @@ def sub(vals):
     return accum
 
 @export('=?')
-def lteq(vals):
+def eq(vals):
     ls = kt.pythonify_list(vals)
     if len(ls) < 2:
         return kt.true
@@ -348,7 +348,7 @@ def lteq(vals):
 
 #XXX: refactor
 @export('<?')
-def lteq(vals):
+def lt(vals):
     latest = kt.e_neg_inf
     for v in kt.iter_list(vals):
         kt.check_type(v, kt.Number)

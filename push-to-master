@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+git push
+git checkout master
+git merge non-rpython
+git push
+git checkout non-rpython

@@ -358,6 +358,26 @@ def lt(vals):
         latest = v
     return kt.true
 
+zero = kt.Fixnum(0)
+
+@export('positive?')
+def positive(vals):
+    for v in kt.iter_list(vals):
+        kt.check_type(v, kt.Number)
+        assert isinstance(v, kt.Number)
+        if not zero.lt(v):
+            return kt.false
+    return kt.true
+
+@export('negative?')
+def negative(vals):
+    for v in kt.iter_list(vals):
+        kt.check_type(v, kt.Number)
+        assert isinstance(v, kt.Number)
+        if not v.lt(zero):
+            return kt.false
+    return kt.true
+
 # Not standard Kernel functions; for debugging only.
 
 @export('print')

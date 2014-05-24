@@ -584,6 +584,17 @@
     (length (list 1))
     (length (list 1 2 3))))
 
+($test "positive?"
+  (#t #f #t #f #t #f)
+  (list
+    (positive?)
+    (positive? 0)
+    (positive? 1)
+    (positive? -1)
+    (positive? 1 1)
+    (positive? 1 -1)))
+
+
 ; Add 'subdir' to your KERNELPATH if you want to test this.
 #;($test "load in KERNELPATH"
   ("overriden" "newly introduced" #inert)

@@ -100,3 +100,11 @@
                              env))
                  (map cadr bindings))
           env)))
+
+($define! $bindings->environment
+  ($vau bindings denv
+    (eval (list $let-redirect
+                (make-environment)
+                bindings
+                (list get-current-environment))
+          denv)))

@@ -576,6 +576,14 @@
     ($binds? (get-current-environment) this-symbol-is-not-bound)
     ($binds? (get-current-environment) $binds? this-symbol-is-not-bound)))
 
+($test "length"
+  (0 0 1 3)
+  (list
+    (length ())
+    (length (list))
+    (length (list 1))
+    (length (list 1 2 3))))
+
 ; Add 'subdir' to your KERNELPATH if you want to test this.
 #;($test "load in KERNELPATH"
   ("overriden" "newly introduced" #inert)

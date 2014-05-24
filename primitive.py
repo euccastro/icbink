@@ -125,6 +125,12 @@ def binds(vals, env, cont):
     env_expr = pyvals[0]
     return env_expr, env, kt.BindsCont(pyvals, cont)
 
+@export('length', [kt.List])
+def length(lst):
+    # XXX we're assuming that no list langer than the fixnum limit will fit in
+    # memory anyway; check.
+    return kt.Fixnum(len(kt.pythonify_list(lst)))
+
 @export('$define!', [kt.KernelValue, kt.KernelValue])
 def define(definiend, expression, env, cont):
     return expression, env, kt.DefineCont(definiend,

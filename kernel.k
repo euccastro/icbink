@@ -1,16 +1,3 @@
-($define! map1
-  ($lambda (fn ls)
-     ($if (null? ls)
-       ()
-       (cons (fn (car ls)) (map1 fn (cdr ls))))))
-
-($define! map
-  ($lambda (fn . lists)
-    ($if (null? (car lists))
-        ()  ; XXX: check that all other lists are null too, signal error if not.
-        (cons (apply fn (map1 car lists))
-              (apply map (list* fn (map1 cdr lists)))))))
-
 ($define! $let
   ($vau (bindings . body) env
     (eval (cons (list* $lambda (map car bindings) body)

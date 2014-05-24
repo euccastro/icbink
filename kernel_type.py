@@ -560,11 +560,41 @@ class BaseErrorCont(Continuation):
 def evaluate_arguments(vals, env, cont):
     if isinstance(vals, Pair):
         if is_nil(vals.cdr):
-            return vals.car, env, NoMoreArgsCont(env, cont, vals.car.source_pos)
+            return vals.car, env, NoMoreArgsCont(cont, vals.car.source_pos)
         else:
             return vals.car, env, EvalArgsCont(vals.cdr, env, cont, vals.car.source_pos)
     else:
         return vals, env, cont
+
+# XXX: refactor to extract common pattern with evaluate_arguments.
+def map_(combiner, transposed_lists, index, env, cont):
+    if not transposed_lists:
+        return cont.plug_reduce(nil)
+    if index == len(transposed_lists) - 1:
+        return combiner.combine(transposed_lists[index],
+                                env, NoMoreArgsCont(cont))
+    else:
+        return combiner.combine(transposed_lists[index],
+                                env,
+                                MapCont(combiner,
+                                        transposed_lists,
+                                        index+1,
+                                        env,
+                                        cont))
+
+class MapCont(Continuation):
+    def __init__(self, combiner, lists, index, env, prev, source_pos=None):
+        Continuation.__init__(self, prev, source_pos)
+        self.combiner = combiner
+        self.lists = lists
+        self.index = index
+        self.env = env
+    def _plug_reduce(self, val):
+        return map_(self.combiner,
+                    self.lists,
+                    self.index,
+                    self.env,
+                    GatherArgsCont(val, self.prev))
 
 class EvalArgsCont(Continuation):
     def __init__(self, exprs, env, prev, source_pos=None):
@@ -577,9 +607,6 @@ class EvalArgsCont(Continuation):
                                   GatherArgsCont(val, self.prev))
 
 class NoMoreArgsCont(Continuation):
-    def __init__(self, env, prev, source_pos=None):
-        Continuation.__init__(self, prev, source_pos)
-        self.env = env
     def _plug_reduce(self, val):
         return self.prev.plug_reduce(Pair(val, nil))
 
@@ -799,6 +826,7 @@ user_error_cont = Continuation(error_cont)
 file_not_found_cont = Continuation(user_error_cont)
 parse_error_cont = Continuation(user_error_cont)
 type_error_cont = Continuation(user_error_cont)
+value_error_cont = Continuation(user_error_cont)
 encapsulation_type_error_cont = Continuation(type_error_cont)
 operand_mismatch_cont = Continuation(type_error_cont)
 arity_mismatch_cont = Continuation(operand_mismatch_cont)
@@ -859,6 +887,9 @@ def signal_type_error(expected_type, actual_value):
            Pair(String(expected_type.type_name),
                               Pair(actual_value, nil)))
 
+def signal_value_error(msg, irritants):
+    raise_(value_error_cont, msg, irritants)
+
 def signal_encapsulation_type_error(expected_type, actual_value):
     raise_(encapsulation_type_error_cont,
            "Expected encapsulated object of type %s, but got %s instead"
@@ -902,11 +933,16 @@ class KernelException(Exception):
     def __str__(self):
         return self.val.todisplay()
 
+class NonNullListTail(Exception):
+    def __init__(self, val):
+        self.val = val
+
 def iter_list(vals):
     while isinstance(vals, Pair):
         yield vals.car
         vals = vals.cdr
-    assert is_nil(vals), "non null list tail: %s" % vals
+    if not is_nil(vals):
+        raise NonNullListTail(vals)
 
 def pythonify_list(vals, check_arity=-1):
     ret = []
@@ -914,4 +950,10 @@ def pythonify_list(vals, check_arity=-1):
         ret.append(item)
     if check_arity != -1 and len(ret) != check_arity:
         signal_arity_mismatch(str(check_arity), vals)
+    return ret
+
+def kernelify_list(ls):
+    ret = nil
+    for x in reversed(ls):
+        ret = Pair(x, ret)
     return ret

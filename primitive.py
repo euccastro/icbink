@@ -176,6 +176,43 @@ def apply_(vals, env_ignore, cont):
     kt.check_type(applicative, kt.Applicative)
     return kt.Pair(applicative.wrapped_combiner, args), env, cont
 
+@export('map', simple=False)
+def map_(vals, env, cont):
+    try:
+        args = kt.pythonify_list(vals)
+    except kt.NonNullListTail:
+        kt.signal_value_error("Argument tree to map is not a list", vals)
+    if len(args) < 2:
+        kt.signal_arity_mismatch(">=2", len(args))
+    app = args[0]
+    kt.check_type(app, kt.Applicative)
+    assert isinstance(app, kt.Applicative)
+    lists = args[1:]
+    return kt.map_(app.wrapped_combiner,
+                   transpose(lists),
+                   0,
+                   env,
+                   cont)
+
+def transpose(pyklists):
+    """
+    Convert a python list of kernel lists of the form:
+        [(a11 ... a1n),
+         (... ... ...),
+         (am1 ... amn)]
+    to a python list of kernel lists of the form:
+        [(a11 ... am1),
+         (... ... ...),
+         (a1n ... amn)]
+    """
+    try:
+        pypylists = map(kt.pythonify_list, pyklists)
+    except kt.NonNullListTail as e:
+        kt.signal_value_error("Non-list passed to map", e.val)
+    if len(set(map(len, pypylists))) > 1:
+        kt.signal_value_error("Different-sized lists passed to map", klists)
+    return map(kt.kernelify_list, zip(*pypylists))
+
 @export('$cond')
 def cond(vals, env, cont):
     return kt.cond(vals, env, cont)
@@ -439,6 +476,7 @@ _exports['parse-error-continuation'] = kt.parse_error_cont
 _exports['unbound-dynamic-key-continuation'] = kt.unbound_dynamic_key_cont
 _exports['unbound-static-key-continuation'] = kt.unbound_static_key_cont
 _exports['type-error-continuation'] = kt.type_error_cont
+_exports['value-error-continuation'] = kt.value_error_cont
 _exports['encapsulation-type-error-continuation'] = kt.encapsulation_type_error_cont
 _exports['operand-mismatch-continuation'] = kt.operand_mismatch_cont
 _exports['arity-mismatch-continuation'] = kt.arity_mismatch_cont

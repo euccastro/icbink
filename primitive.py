@@ -119,7 +119,7 @@ def make_environment(vals):
 def binds(vals, env, cont):
     pyvals = kt.pythonify_list(vals)
     if len(pyvals) < 1:
-        kt.signal_arity_error(">=1", vals)
+        kt.signal_arity_mismatch(">=1", vals)
     for symbol in pyvals[1:]:
         kt.check_type(symbol, kt.Symbol)
     env_expr = pyvals[0]

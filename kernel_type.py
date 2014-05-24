@@ -392,7 +392,7 @@ class Environment(KernelValue):
             return ret
     def lookup_unchecked(self, symbol):
         assert isinstance(symbol, Symbol), "looking up non-symbol: %s" % symbol
-        ret = self.bindings.get(symbol.symval)
+        ret = self.bindings.get(symbol.symval, None)
         if ret is not None:
             return ret
         for parent in self.parents:

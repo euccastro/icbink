@@ -3,6 +3,7 @@ from itertools import product
 import os
 from rpython.rlib import jit, rpath, rstring, unroll
 from rpython.rlib.parsing.parsing import ParseError
+from rpython.rlib.rbigint import rbigint
 
 import debug
 import kernel_type as kt
@@ -127,9 +128,23 @@ def binds(vals, env, cont):
 
 @export('length', [kt.List])
 def length(lst):
-    # XXX we're assuming that no list langer than the fixnum limit will fit in
-    # memory anyway; check.
-    return kt.Fixnum(len(kt.pythonify_list(lst)))
+    ret = 0
+    while isinstance(lst, kt.Pair):
+        try:
+            ret += 1
+        except OverflowError:
+            return big_length(ret, lst)
+        lst = lst.cdr
+    kt.check_type(lst, kt.Null)
+    return kt.Fixnum(ret)
+
+def big_length(i, lst):
+    ret = rbigint.from_int(i)
+    while isinstance(lst, kt.Pair):
+        ret = ret.add(1)
+        lst = lst.cdr
+    kt.check_type(lst, kt.Null)
+    return kt.Bignum(ret)
 
 @export('$define!', [kt.KernelValue, kt.KernelValue])
 def define(definiend, expression, env, cont):

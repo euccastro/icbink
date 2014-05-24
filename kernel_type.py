@@ -243,7 +243,6 @@ class Pair(List):
     _immutable_fields_ = ['car', 'cdr']
     simple = False
     def __init__(self, car, cdr, source_pos=None):
-        # XXX: specialize for performance?
         assert isinstance(car, KernelValue), "non-KernelValue car: %s" % car
         assert isinstance(cdr, KernelValue), "non-KernelValue cdr: %s" % cdr
         self.car = car
@@ -567,6 +566,9 @@ def evaluate_arguments(vals, env, cont):
         return vals, env, cont
 
 # XXX: refactor to extract common pattern with evaluate_arguments.
+#      this one happens to work on a Python list because we just
+#      happen to build one for transposing the list arguments to
+#      map.
 def map_(combiner, transposed_lists, index, env, cont):
     if not transposed_lists:
         return cont.plug_reduce(nil)
@@ -920,7 +922,7 @@ def signal_add_positive_to_negative_infinity_error(pos, neg):
            "Tried to add positive to negative infinity",
            Pair(pos, Pair(neg, nil)))
 
-# XXX: Not actual kernel type.
+# Not actual kernel type.
 class KernelExit(Exception):
     pass
 

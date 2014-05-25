@@ -576,6 +576,14 @@
     ($binds? (get-current-environment) this-symbol-is-not-bound)
     ($binds? (get-current-environment) $binds? this-symbol-is-not-bound)))
 
+($test "map"
+  (111 222 333)
+  (map
+    +
+    (list 1 2 3)
+    (list 10 20 30)
+    (list 100 200 300)))
+
 ($test "length"
   (0 0 1 3)
   (list
@@ -647,12 +655,6 @@
       "d")
     "e"))
 
-(println
-  (map
-    +
-    (list 1 2 3)
-    (list 10 20 30)
-    (list 100 200 300)))
 
 (println)
 (println "All OK.")

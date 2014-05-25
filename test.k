@@ -594,6 +594,23 @@
     (positive? 1 1)
     (positive? 1 -1)))
 
+($test "trivial append"
+  ()
+  (append))
+
+($test "append with a single non-list"
+  1
+  (append 1))
+
+($test "append termitated by non-list"
+  (1 2 . 3)
+  (append (list 1 2) 3))
+
+($test "append multiple lists"
+  (1 2 3 4 5)
+  (append (list 1) (list 2 3) (list 4 5)))
+
+
 
 ; Add 'subdir' to your KERNELPATH if you want to test this.
 #;($test "load in KERNELPATH"

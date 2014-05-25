@@ -378,6 +378,17 @@ def negative(vals):
             return kt.false
     return kt.true
 
+@export('append')
+def append(vals):
+    lists = kt.pythonify_list(vals)
+    if not lists:
+        return kt.nil
+    ret = lists.pop()
+    for ls in reversed(lists):
+        for el in reversed(kt.pythonify_list(ls)):
+            ret = kt.Pair(el, ret)
+    return ret
+
 # Not standard Kernel functions; for debugging only.
 
 @export('print')

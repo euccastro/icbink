@@ -108,3 +108,26 @@
                 bindings
                 (list get-current-environment))
           denv)))
+
+($define! guard-dynamic-extent
+  (wrap
+    ($vau (entry-guards combiner exit-guards) env
+      ($let ((local (get-current-environment)))
+        ($let/cc bypass
+          ($set! local bypass bypass)
+          (apply-continuation
+            (car ($let/cc cont
+                   ($set! local enter-through-bypass
+                     (continuation->applicative cont))
+                   (list bypass)))
+            #inert)))
+      ($let/cc cont
+        (enter-through-bypass
+          (extend-continuation
+            (guard-continuation
+              (cons (list bypass ($lambda (v . #ignore) v))
+                    entry-guards)
+              cont
+              exit-guards)
+            ($lambda #ignore
+              (apply combiner () env))))))))

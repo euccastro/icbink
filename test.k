@@ -664,6 +664,7 @@
             val))))))
 
 ; Oto Havle reported that this was failing.
+; Fixed in commit a732355e236.
 ($t/t "guard-dynamic-extent, exiting with divert"
   ("inside" "exiting") 42
   ($let/cc cc

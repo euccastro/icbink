@@ -202,6 +202,32 @@
         (apply-continuation in-cont "apply-cont-val")))
     " outer"))
 
+($t/t "diverting exit guard"
+  ("enter" "inside" "exit")
+  "return value from exit divert"
+  ($let/cc cc
+    ($let
+      ((in-cont
+         (extend-continuation
+           (guard-continuation
+             (list
+               (list root-continuation
+                     ($lambda (val divert)
+                       (trace "enter")
+                       "return value from entry")))
+             cc
+             (list
+               (list root-continuation
+                     ($lambda (val divert)
+                       (trace "exit")
+                       (apply divert "return value from exit divert")))))
+           ($lambda x
+             (trace "inside")
+             (apply-continuation
+               error-continuation
+               "value passed to error")))))
+      (apply-continuation in-cont "apply-cont-val"))))
+
 ($t/t "only one interceptor gets triggered per clause"
   ("first") "whatever"
   ($let/cc cc
@@ -276,7 +302,6 @@
     ($let* ((build-tracing-guard (tracing-guard-builder cc))
             (child-cont (build-tracing-guard cc "child")))
       (apply-continuation child-cont "x"))))
-
 
 ($t/t "simple tracing guard"
   ("enter base"
@@ -637,6 +662,27 @@
           ($lambda (val divert)
             (trace "exiting")
             val))))))
+
+; Oto Havle reported that this was failing.
+($t/t "guard-dynamic-extent, exiting with divert"
+  ("inside" "exiting") 42
+  ($let/cc cc
+    (guard-dynamic-extent
+      (list
+        (list
+          root-continuation
+          ($lambda (val divert)
+            (trace "entering")
+            val)))
+      ($lambda ()
+        (trace "inside")
+        (apply-continuation cc 42))
+      (list
+        (list
+          root-continuation
+          ($lambda (val divert)
+            (trace "exiting")
+            (apply divert val)))))))
 
 ($t/t "guard-dynamic-extent, entering"
   ("inside" "entering") 42

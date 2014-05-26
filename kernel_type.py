@@ -346,7 +346,17 @@ def abnormally_pass(operands, src_cont, dst_cont):
     for outer, interceptor in reversed(exiting):
         cont = InterceptCont(interceptor, cont, outer)
     debug.on_abnormal_pass(operands, src_cont, dst_cont, exiting, entering)
-    return cont.plug_reduce(operands)
+    return pass_to_next(operands, cont)
+
+def pass_to_next(operands, cont):
+    if isinstance(cont, InterceptCont):
+        outer = cont.prev
+        return cont.interceptor.combine(
+                Pair(operands, Pair(Applicative(ContWrapper(outer)), nil)),
+                outer.env,
+                cont)
+    else:
+        return cont.plug_reduce(operands)
 
 def select_interceptors(cont, cls):
     ls = []
@@ -748,18 +758,12 @@ class InterceptCont(Continuation):
         # abnormal passes, but normal return from this continuation goes to the
         # next interceptor (or to the destination, if this is the last one)
         # instead.
-        Continuation.__init__(self, outer_cont)
+        Continuation.__init__(self, outer_cont, source_pos)
         self.next_cont = next_cont
         assert isinstance(interceptor, Applicative), "non-applicative interceptor: %s" % interceptor
         self.interceptor = interceptor.wrapped_combiner
-        self.source_pos = source_pos
-
     def _plug_reduce(self, val):
-        outer_cont = self.prev
-        return self.interceptor.combine(
-                Pair(val, Pair(Applicative(ContWrapper(outer_cont)), nil)),
-                outer_cont.env,
-                self.next_cont)
+        return pass_to_next(val, self.next_cont)
 
 class ExtendCont(Continuation):
     def __init__(self, receiver, env, cont_to_extend, source_pos=None):

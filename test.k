@@ -662,6 +662,12 @@
       (apply-continuation result 42)
       result)))
 
+($test "member?"
+  (#f #f #t)
+  (list
+    (member? "a" ())
+    (member? "a" (list "b" "c" "d"))
+    (member? "a" (list "b" "c" "a" "d"))))
 
 ; Add 'subdir' to your KERNELPATH if you want to test this.
 #;($test "load in KERNELPATH"

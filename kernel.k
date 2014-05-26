@@ -131,3 +131,9 @@
               exit-guards)
             ($lambda #ignore
               (apply combiner () env))))))))
+
+($define! member?
+  ($lambda (x xs)
+    ($cond ((null? xs) #f)
+           ((equal? x (car xs)) #t)
+           (#t (member? x (cdr xs))))))

@@ -137,3 +137,7 @@
     ($cond ((null? xs) #f)
            ((equal? x (car xs)) #t)
            (#t (member? x (cdr xs))))))
+
+($define! $remote-eval
+  ($vau (o e) d
+    (eval o (eval e d))))

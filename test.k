@@ -618,7 +618,7 @@
   (1 2 3 4 5)
   (append (list 1) (list 2 3) (list 4 5)))
 
-($t/t "guard dynamic extent"
+($t/t "guard-dynamic-extent, exiting"
   ("inside" "exiting") 42
   ($let/cc cc
     (guard-dynamic-extent
@@ -638,6 +638,29 @@
             (trace "exiting")
             val))))))
 
+($t/t "guard-dynamic-extent, entering"
+  ("inside" "entering") 42
+  ($let
+    ((result
+       (guard-dynamic-extent
+         (list
+           (list
+             root-continuation
+             ($lambda (val divert)
+               (trace "entering")
+               val)))
+         ($lambda ()
+           (trace "inside")
+           ($let/cc inner-cc inner-cc))
+         (list
+           (list
+             root-continuation
+             ($lambda (val divert)
+               (trace "exiting")
+               val))))))
+    ($if (continuation? result)
+      (apply-continuation result 42)
+      result)))
 
 
 ; Add 'subdir' to your KERNELPATH if you want to test this.

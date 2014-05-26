@@ -547,7 +547,7 @@
 
 ($test-raises "load: not found"
   file-not-found-continuation
-  (load "this-filanema-does-not-exist"))
+  (load "this-filename-does-not-exist"))
 
 ($test "$provide!"
   (1 2 3)

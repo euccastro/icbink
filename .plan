@@ -1,5 +1,7 @@
 Work on compliance with kplts
 
+Make pythonify_list signal a proper Kernel type/value error
+
 Main concepts not done yet:
     Ports
 

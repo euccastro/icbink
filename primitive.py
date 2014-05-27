@@ -126,7 +126,7 @@ def binds(vals, env, cont):
     env_expr = pyvals[0]
     return env_expr, env, kt.BindsCont(pyvals, cont)
 
-@export('length', [kt.List])
+@export('length', [kt.KernelValue])
 def length(lst):
     ret = 0
     while isinstance(lst, kt.Pair):
@@ -135,15 +135,19 @@ def length(lst):
         except OverflowError:
             return big_length(ret, lst)
         lst = lst.cdr
-    kt.check_type(lst, kt.Null)
     return kt.Fixnum(ret)
+
+@export('list?', [kt.KernelValue])
+def listp(val):
+    while isinstance(val, kt.Pair):
+        val = val.cdr
+    return kt.kernel_boolean(kt.is_nil(val))
 
 def big_length(i, lst):
     ret = rbigint.from_int(i)
     while isinstance(lst, kt.Pair):
         ret = ret.add(1)
         lst = lst.cdr
-    kt.check_type(lst, kt.Null)
     return kt.Bignum(ret)
 
 @export('$define!', [kt.KernelValue, kt.KernelValue])

@@ -610,11 +610,13 @@
     (list 100 200 300)))
 
 ($test "length"
-  (0 0 1 3)
+  (0 0 0 1 2 3)
   (list
+    (length "not a pair")
     (length ())
     (length (list))
     (length (list 1))
+    (length (cons 1 (cons 2 "not a pair")))
     (length (list 1 2 3))))
 
 ($test "positive?"
@@ -715,6 +717,15 @@
     (member? "a" ())
     (member? "a" (list "b" "c" "d"))
     (member? "a" (list "b" "c" "a" "d"))))
+
+($test "list?"
+  (#f #f #t #t)
+  (map finite-list?
+       (list "not a pair"
+             (list* 1 2 3 "not-a-pair")
+             ()
+             (list 1 2 3))))
+
 
 ; Add 'subdir' to your KERNELPATH if you want to test this.
 #;($test "load in KERNELPATH"

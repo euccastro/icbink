@@ -141,3 +141,8 @@
 ($define! $remote-eval
   ($vau (o e) d
     (eval o (eval e d))))
+
+; Since icbink provides no way to create a cyclic list, all lists are finite.
+($define! finite-list? list?)
+
+($define! countable-list? list?)

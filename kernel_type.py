@@ -238,6 +238,9 @@ def is_true(kv):
 def is_false(kv):
     return false.equal(kv)
 
+def kernel_boolean(python_boolean):
+    return true if python_boolean else false
+
 class Pair(List):
     type_name = 'pair'
     _immutable_fields_ = ['car', 'cdr']

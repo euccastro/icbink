@@ -422,6 +422,36 @@
   #f
   (=? 4 4 3))
 
+($test "trivial multiplication"
+  1
+  (*))
+
+($test "multiplication by infinity"
+  #e-infinity
+  (* #e+infinity -1))
+
+($test "multiply a single number"
+  5
+  (* 5))
+
+($test "multiply two numbers"
+  -10
+  (* -2 5))
+
+($test "multiply several numbers"
+  120
+  (* 1 -2 3 4 -5))
+
+($test "bignum multiplication"
+  888888888888888888888888888888888888888888888888888888888888888
+  (* 444444444444444444444444444444444444444444444444444444444444444
+     2))
+
+($test "bignum multiplication, other order"
+  888888888888888888888888888888888888888888888888888888888888888
+  (* 2
+     444444444444444444444444444444444444444444444444444444444444444))
+
 ; Encapsulations.
 
 ($define! (e1 p1? d1) (make-encapsulation-type))

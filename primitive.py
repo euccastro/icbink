@@ -305,11 +305,20 @@ def make_keyed_variable(binder_class, accessor_class):
 
 @export('+')
 def add(vals):
-    accum = kt.Fixnum(0)
+    accum = kt.zero
     for v in kt.iter_list(vals):
         kt.check_type(v, kt.Number)
         assert isinstance(v, kt.Number)
         accum = accum.add(v)
+    return accum
+
+@export('*')
+def mul(vals):
+    accum = kt.one
+    for v in kt.iter_list(vals):
+        kt.check_type(v, kt.Number)
+        assert isinstance(v, kt.Number)
+        accum = accum.mul(v)
     return accum
 
 @export('-')
@@ -362,14 +371,13 @@ def lt(vals):
         latest = v
     return kt.true
 
-zero = kt.Fixnum(0)
 
 @export('positive?')
 def positive(vals):
     for v in kt.iter_list(vals):
         kt.check_type(v, kt.Number)
         assert isinstance(v, kt.Number)
-        if not zero.lt(v):
+        if not kt.zero.lt(v):
             return kt.false
     return kt.true
 
@@ -378,7 +386,7 @@ def negative(vals):
     for v in kt.iter_list(vals):
         kt.check_type(v, kt.Number)
         assert isinstance(v, kt.Number)
-        if not v.lt(zero):
+        if not v.lt(kt.zero):
             return kt.false
     return kt.true
 
@@ -557,6 +565,7 @@ _exports['operand-mismatch-continuation'] = kt.operand_mismatch_cont
 _exports['arity-mismatch-continuation'] = kt.arity_mismatch_cont
 _exports['symbol-not-found-continuation'] = kt.symbol_not_found_cont
 _exports['add-positive-to-negative-infinity-continuation'] = kt.add_positive_to_negative_infinity_cont
+_exports['multiply-infinity-by-zero-continuation'] = kt.multiply_infinity_by_zero_cont
 
 _ground_env = kt.Environment([], _exports)
 

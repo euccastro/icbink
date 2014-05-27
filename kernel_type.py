@@ -65,6 +65,13 @@ class ExactPositiveInfinity(Infinity):
             signal_add_positive_to_negative_infinity_error(self, other)
         else:
             return self
+    def mul(self, other):
+        if zero.lt(other):
+            return self
+        elif other.lt(zero):
+            return e_neg_inf
+        else:
+            signal_multiply_infinity_by_zero_error(self, other)
     def neg(self):
         return e_neg_inf
 
@@ -82,6 +89,13 @@ class ExactNegativeInfinity(Infinity):
             signal_add_positive_to_negative_infinity_error(other, self)
         else:
             return self
+    def mul(self, other):
+        if zero.lt(other):
+            return self
+        elif other.lt(zero):
+            return e_pos_inf
+        else:
+            signal_multiply_infinity_by_zero_error(self, other)
     def neg(self):
         return e_pos_inf
 
@@ -114,11 +128,24 @@ class Fixnum(Number):
         else:
             assert isinstance(other, Number)
             return other.add(self)
+    def mul(self, other):
+        if isinstance(other, Fixnum):
+            try:
+                res = rarithmetic.ovfcheck(other.fixval * self.fixval)
+                return Fixnum(res)
+            except OverflowError:
+                return Bignum(rbigint.fromint(self.fixval).mul(rbigint.fromint(other.fixval)))
+        else:
+            assert isinstance(other, Number)
+            return other.mul(self)
     def neg(self):
         try:
             return Fixnum(-self.fixval)
         except OverflowError:
             return Bignum(rbigint.fromint(self.fixval).neg())
+
+zero = Fixnum(0)
+one = Fixnum(1)
 
 class Bignum(Number):
     _immutable_fields_ = ['bigval']
@@ -139,6 +166,15 @@ class Bignum(Number):
             assert isinstance(other, Number)
             return other.add(self)
         return try_and_make_fixnum(self.bigval.add(otherval))
+    def mul(self, other):
+        if isinstance(other, Bignum):
+            otherval = other.bigval
+        elif isinstance(other, Fixnum):
+            otherval = rbigint.fromint(other.fixval)
+        else:
+            assert isinstance(other, Number)
+            return other.add(self)
+        return try_and_make_fixnum(self.bigval.mul(otherval))
     def neg(self):
         return try_and_make_fixnum(self.bigval.neg())
 
@@ -857,6 +893,7 @@ symbol_not_found_cont = Continuation(user_error_cont)
 unbound_dynamic_key_cont = Continuation(user_error_cont)
 unbound_static_key_cont = Continuation(user_error_cont)
 add_positive_to_negative_infinity_cont = Continuation(user_error_cont)
+multiply_infinity_by_zero_cont = Continuation(user_error_cont)
 
 class ErrorObject(KernelValue):
     type_name = 'error-object'
@@ -942,6 +979,11 @@ def signal_add_positive_to_negative_infinity_error(pos, neg):
     raise_(add_positive_to_negative_infinity_cont,
            "Tried to add positive to negative infinity",
            Pair(pos, Pair(neg, nil)))
+
+def signal_multiply_infinity_by_zero_error(inf, zero):
+    raise_(multiply_infinity_by_zero_cont,
+           "Tried to multiply infinity by zero",
+           Pair(inf, Pair(zero, nil)))
 
 # Not actual kernel type.
 class KernelExit(Exception):

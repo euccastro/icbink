@@ -418,6 +418,16 @@ def println(val):
     print
     return kt.inert
 
+@export('print-tb', simple=False)
+def print_tb(val, env, cont):
+    c = cont
+    while c is not None:
+        assert isinstance(c, kt.Continuation)
+        if c.source_pos is not None:
+            c.source_pos.print_()
+        c = c.prev
+    return cont.plug_reduce(kt.inert)
+
 class TestError(Exception):
     def __init__(self, val):
         assert isinstance(val, kt.KernelValue)

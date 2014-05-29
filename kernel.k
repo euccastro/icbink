@@ -17,7 +17,7 @@
   ($lambda x
     ($cond ((null? x) #f)
           ((car x) #t)
-          (#t (or? (cdr x))))))
+          (#t (apply or? (cdr x))))))
 
 ($define! $and?
   ($vau x e

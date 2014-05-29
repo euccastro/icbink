@@ -770,6 +770,20 @@
         (and? #f #t #t)
         (and? #t #t #f)))
 
+($test "or?, trivial"
+  #f
+  (or?))
+
+($test "or?, single"
+  (#t #f)
+  (list (or? #t) (or? #f)))
+
+($test "or?, multiple"
+  (#t #t #f)
+  (list (or? #t #f #f)
+        (or? #f #f #t)
+        (or? #f #f #f)))
+
 ; Add 'subdir' to your KERNELPATH if you want to test this.
 #;($test "load in KERNELPATH"
   ("overriden" "newly introduced" #inert)

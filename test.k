@@ -756,6 +756,19 @@
              ()
              (list 1 2 3))))
 
+($test "and?, trivial"
+  #t
+  (and?))
+
+($test "and?, single"
+  (#t #f)
+  (list (and? #t) (and? #f)))
+
+($test "and?, multiple"
+  (#t #f #f)
+  (list (and? #t #t #t)
+        (and? #f #t #t)
+        (and? #t #t #f)))
 
 ; Add 'subdir' to your KERNELPATH if you want to test this.
 #;($test "load in KERNELPATH"

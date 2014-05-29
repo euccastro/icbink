@@ -10,7 +10,7 @@
 ($define! and?
   ($lambda x
     ($cond ((null? x) #t)
-          ((car x) (and? (cdr x)))
+          ((car x) (apply and? (cdr x)))
           (#t #f))))
 
 ($define! or?

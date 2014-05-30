@@ -116,13 +116,13 @@
         "w")
     "z"))
 
-; I don't think this is Kernel semantics (e.g. read, in 4.10.5, "an applicative
-; must have a list of operands", but is this cool or what?
-($test "combine with non-list operand" "ha!" (($lambda x x) . "ha!"))
-($test "combine with improper list" ("a" . "b") (($lambda x x) "a" . "b"))
-($test "combine: final cdr of improper list matches 'rest' formal"
-  ("a" "b")
-  (($lambda (x . y) (list x y)) "a" . "b"))
+($test-raises "combine with non-pair operand"
+  combine-with-non-list-operands-continuation
+  (($lambda x x) . "not a pair"))
+
+($test-raises "combine with non-proper list operand"
+  combine-with-non-list-operands-continuation
+  (($lambda x x) 1 . "not a pair nor nil"))
 
 ($test "simple extend-continuation" "outside inside"
   ($let/cc cc

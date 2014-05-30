@@ -570,6 +570,7 @@ _exports['unbound-dynamic-key-continuation'] = kt.unbound_dynamic_key_cont
 _exports['unbound-static-key-continuation'] = kt.unbound_static_key_cont
 _exports['type-error-continuation'] = kt.type_error_cont
 _exports['value-error-continuation'] = kt.value_error_cont
+_exports['combine-with-non-list-operands-continuation'] = kt.combine_with_non_list_operands_cont
 _exports['encapsulation-type-error-continuation'] = kt.encapsulation_type_error_cont
 _exports['operand-mismatch-continuation'] = kt.operand_mismatch_cont
 _exports['arity-mismatch-continuation'] = kt.arity_mismatch_cont

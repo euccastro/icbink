@@ -611,13 +611,17 @@ class BaseErrorCont(Continuation):
         return Continuation._plug_reduce(self, val)
 
 def evaluate_arguments(vals, env, cont):
-    if isinstance(vals, Pair):
+    if is_nil(vals):
+        return cont.plug_reduce(nil)
+    elif isinstance(vals, Pair):
         if is_nil(vals.cdr):
             return vals.car, env, NoMoreArgsCont(cont, vals.car.source_pos)
         else:
             return vals.car, env, EvalArgsCont(vals.cdr, env, cont, vals.car.source_pos)
     else:
-        return vals, env, cont
+        # XXX: if the arguments are an improper list, this only prints the last
+        # cdr.
+        signal_combine_with_non_list_operands(Pair(vals, nil))
 
 # XXX: refactor to extract common pattern with evaluate_arguments.
 #      this one happens to work on a Python list because we just
@@ -889,6 +893,7 @@ file_not_found_cont = Continuation(user_error_cont)
 parse_error_cont = Continuation(user_error_cont)
 type_error_cont = Continuation(user_error_cont)
 value_error_cont = Continuation(user_error_cont)
+combine_with_non_list_operands_cont = Continuation(value_error_cont)
 encapsulation_type_error_cont = Continuation(type_error_cont)
 operand_mismatch_cont = Continuation(type_error_cont)
 arity_mismatch_cont = Continuation(operand_mismatch_cont)
@@ -952,6 +957,11 @@ def signal_type_error(expected_type, actual_value):
 
 def signal_value_error(msg, irritants):
     raise_(value_error_cont, msg, irritants)
+
+def signal_combine_with_non_list_operands(irritants):
+    raise_(combine_with_non_list_operands_cont,
+           ("Combine with non-list operands: %s" % irritants.tostring()),
+           irritants)
 
 def signal_encapsulation_type_error(expected_type, actual_value):
     raise_(encapsulation_type_error_cont,

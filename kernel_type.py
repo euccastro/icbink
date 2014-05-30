@@ -420,6 +420,9 @@ class Applicative(Combiner):
         return evaluate_arguments(operands,
                                   env,
                                   ApplyCont(self.wrapped_combiner, env, cont))
+    def equal(self, other):
+        return (isinstance(other, Applicative)
+                and other.wrapped_combiner.equal(self.wrapped_combiner))
     def tostring(self):
         return "<applicative %s>" % self.wrapped_combiner.tostring()
 

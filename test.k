@@ -784,6 +784,11 @@
         (or? #f #f #t)
         (or? #f #f #f)))
 
+($test "two applicatives are eq? iff their underlying combiners are eq?"
+  #t
+  ($let ((v ($vau x e 1)))
+    (equal? (wrap v) (wrap v))))
+
 ; Add 'subdir' to your KERNELPATH if you want to test this.
 #;($test "load in KERNELPATH"
   ("overriden" "newly introduced" #inert)

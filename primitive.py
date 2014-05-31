@@ -409,6 +409,16 @@ def lt(vals):
         latest = v
     return kt.true
 
+@export('>?')
+def gt(vals):
+    latest = kt.e_pos_inf
+    for v in kt.iter_list(vals):
+        kt.check_type(v, kt.Number)
+        assert isinstance(v, kt.Number)
+        if not v.lt(latest):
+            return kt.false
+        latest = v
+    return kt.true
 
 @export('positive?')
 def positive(vals):

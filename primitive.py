@@ -451,27 +451,33 @@ def append(vals):
 
 @export('and?')
 def andp(vals):
-    try:
-        ret = kt.true
-        for v in kt.iter_list(vals):
-            kt.check_type(v, kt.Boolean)
-            if kt.false.equal(v):
-                ret = kt.false
+    rest = vals
+    ret = kt.true
+    while isinstance(rest, kt.Pair):
+        v = rest.car
+        kt.check_type(v, kt.Boolean)
+        if kt.false.equal(v):
+            ret = kt.false
+        rest = rest.cdr
+    if kt.is_nil(rest):
         return ret
-    except kt.NonNullListTail:
+    else:
         kt.signal_value_error("Called 'and?' with non-list",
                               kt.Pair(vals, kt.nil))
 
 @export('or?')
 def orp(vals):
-    try:
-        ret = kt.false
-        for v in kt.iter_list(vals):
-            kt.check_type(v, kt.Boolean)
-            if kt.true.equal(v):
-                ret = kt.true
+    rest = vals
+    ret = kt.false
+    while isinstance(rest, kt.Pair):
+        v = rest.car
+        kt.check_type(v, kt.Boolean)
+        if kt.true.equal(v):
+            ret = kt.true
+        rest = rest.cdr
+    if kt.is_nil(rest):
         return ret
-    except kt.NonNullListTail:
+    else:
         kt.signal_value_error("Called 'or?' with non-list",
                               kt.Pair(vals, kt.nil))
 
@@ -605,12 +611,15 @@ def check_guards(guards):
 def make_pred(cls, name):
     def pred(vals):
         result = kt.true
-        try:
-            for val in kt.iter_list(vals):
-                if result is kt.true and not isinstance(val, cls):
-                    result = kt.false
+        rest = vals
+        while isinstance(rest, kt.Pair):
+            val = rest.car
+            if not isinstance(val, cls):
+                result = kt.false
+            rest = rest.cdr
+        if kt.is_nil(rest):
             return result
-        except kt.NonNullListTail:
+        else:
             kt.signal_value_error(("Called predicate '%s' with non-list" % name),
                                   kt.Pair(vals, kt.nil))
     return kt.Applicative(kt.SimplePrimitive(pred, name))

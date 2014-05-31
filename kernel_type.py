@@ -54,6 +54,8 @@ class Infinity(Number):
     def divide(self, other):
         # divide primitive already discards error cases.
         return zero
+    def mod(self, other):
+        return other
 
 class ExactPositiveInfinity(Infinity):
     def tostring(self):
@@ -145,6 +147,11 @@ class Fixnum(Number):
             return Fixnum(self.fixval // other.fixval)
         else:
             return other.divide(self)
+    def mod_by(self, other):
+        if isinstance(other, Fixnum):
+            return Fixnum(self.fixval % other.fixval)
+        else:
+            return other.mod(self)
     def neg(self):
         try:
             return Fixnum(-self.fixval)
@@ -201,6 +208,24 @@ class Bignum(Number):
             assert isinstance(other, Number)
             return other.divide(self)
         return try_and_make_fixnum(self.bigval.floordiv(otherval))
+    def mod(self, other):
+        if isinstance(other, Bignum):
+            otherval = other.bigval
+        elif isinstance(other, Fixnum):
+            otherval = rbigint.fromint(other.fixval)
+        else:
+            assert isinstance(other, Number)
+            return other.mod_by(self)
+        return try_and_make_fixnum(otherval.mod(self.bigval))
+    def mod_by(self, other):
+        if isinstance(other, Bignum):
+            otherval = other.bigval
+        elif isinstance(other, Fixnum):
+            otherval = rbigint.fromint(other.fixval)
+        else:
+            assert isinstance(other, Number)
+            return other.mod(self)
+        return try_and_make_fixnum(self.bigval.mod(otherval))
     def neg(self):
         return try_and_make_fixnum(self.bigval.neg())
 

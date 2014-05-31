@@ -455,11 +455,24 @@ def andp(vals):
         ret = kt.true
         for v in kt.iter_list(vals):
             kt.check_type(v, kt.Boolean)
-            if ret is kt.true and kt.false.equal(v):
+            if kt.false.equal(v):
                 ret = kt.false
         return ret
     except kt.NonNullListTail:
         kt.signal_value_error("Called 'and?' with non-list",
+                              kt.Pair(vals, kt.nil))
+
+@export('or?')
+def orp(vals):
+    try:
+        ret = kt.false
+        for v in kt.iter_list(vals):
+            kt.check_type(v, kt.Boolean)
+            if kt.true.equal(v):
+                ret = kt.true
+        return ret
+    except kt.NonNullListTail:
+        kt.signal_value_error("Called 'or?' with non-list",
                               kt.Pair(vals, kt.nil))
 
 @export('$and?')

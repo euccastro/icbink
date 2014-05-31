@@ -7,12 +7,6 @@
 ($define! not?
   ($lambda (x) ($if x #f #t)))
 
-($define! or?
-  ($lambda x
-    ($cond ((null? x) #f)
-          ((car x) #t)
-          (#t (apply or? (cdr x))))))
-
 ($define! get-current-environment
   ($vau () e e))
 

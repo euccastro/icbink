@@ -146,3 +146,13 @@
 ($define! finite-list? list?)
 
 ($define! countable-list? list?)
+
+($define! list-tail
+  ($lambda (ls k)
+    ($if (>? k 0)
+      (list-tail (cdr ls) (- k 1))
+      ls)))
+
+($define! list-ref
+  ($lambda (ls k)
+    (car (list-tail ls k))))

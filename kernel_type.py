@@ -156,8 +156,10 @@ class Fixnum(Number):
             return other.mod(self)
     def divmod_by(self, other):
         if isinstance(other, Fixnum):
-            dm = divmod(self.fixval, other.fixval)
-            return Pair(Fixnum(dm[0]), Pair(Fixnum(dm[1]), nil))
+            # builtin divmod doesn't seem to work in RPython.
+            s = self.fixval
+            o = other.fixval
+            return Pair(Fixnum(s // o), Pair(Fixnum(s % o), nil))
         else:
             return other.divmod(self)
     def neg(self):

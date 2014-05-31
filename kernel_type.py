@@ -51,7 +51,9 @@ class Number(KernelValue):
         return self.add(other.neg())
 
 class Infinity(Number):
-    pass
+    def divide(self, other):
+        # divide primitive already discards error cases.
+        return zero
 
 class ExactPositiveInfinity(Infinity):
     def tostring(self):
@@ -62,7 +64,7 @@ class ExactPositiveInfinity(Infinity):
         return False
     def add(self, other):
         if isinstance(other, ExactNegativeInfinity):
-            signal_add_positive_to_negative_infinity_error(self, other)
+            signal_add_positive_to_negative_infinity(self, other)
         else:
             return self
     def mul(self, other):
@@ -71,7 +73,7 @@ class ExactPositiveInfinity(Infinity):
         elif other.lt(zero):
             return e_neg_inf
         else:
-            signal_multiply_infinity_by_zero_error(self, other)
+            signal_multiply_infinity_by_zero(self, other)
     def neg(self):
         return e_neg_inf
 
@@ -86,7 +88,7 @@ class ExactNegativeInfinity(Infinity):
         return not isinstance(other, ExactNegativeInfinity)
     def add(self, other):
         if isinstance(other, ExactPositiveInfinity):
-            signal_add_positive_to_negative_infinity_error(other, self)
+            signal_add_positive_to_negative_infinity(other, self)
         else:
             return self
     def mul(self, other):
@@ -95,7 +97,7 @@ class ExactNegativeInfinity(Infinity):
         elif other.lt(zero):
             return e_pos_inf
         else:
-            signal_multiply_infinity_by_zero_error(self, other)
+            signal_multiply_infinity_by_zero(self, other)
     def neg(self):
         return e_pos_inf
 
@@ -138,6 +140,11 @@ class Fixnum(Number):
         else:
             assert isinstance(other, Number)
             return other.mul(self)
+    def divide_by(self, other):
+        if isinstance(other, Fixnum):
+            return Fixnum(self.fixval // other.fixval)
+        else:
+            return other.divide(self)
     def neg(self):
         try:
             return Fixnum(-self.fixval)
@@ -157,6 +164,7 @@ class Bignum(Number):
         return str(self.bigval)
     def equal(self, other):
         return isinstance(other, Bignum) and other.bigval.eq(self.bigval)
+    #XXX: refactor out duplication once we have them all implemented.
     def add(self, other):
         if isinstance(other, Bignum):
             otherval = other.bigval
@@ -175,6 +183,24 @@ class Bignum(Number):
             assert isinstance(other, Number)
             return other.add(self)
         return try_and_make_fixnum(self.bigval.mul(otherval))
+    def divide(self, other):
+        if isinstance(other, Bignum):
+            otherval = other.bigval
+        elif isinstance(other, Fixnum):
+            otherval = rbigint.fromint(other.fixval)
+        else:
+            assert isinstance(other, Number)
+            return other.divide_by(self)
+        return try_and_make_fixnum(otherval.floordiv(self.bigval))
+    def divide_by(self, other):
+        if isinstance(other, Bignum):
+            otherval = other.bigval
+        elif isinstance(other, Fixnum):
+            otherval = rbigint.fromint(other.fixval)
+        else:
+            assert isinstance(other, Number)
+            return other.divide(self)
+        return try_and_make_fixnum(self.bigval.floordiv(otherval))
     def neg(self):
         return try_and_make_fixnum(self.bigval.neg())
 
@@ -900,8 +926,11 @@ arity_mismatch_cont = Continuation(operand_mismatch_cont)
 symbol_not_found_cont = Continuation(user_error_cont)
 unbound_dynamic_key_cont = Continuation(user_error_cont)
 unbound_static_key_cont = Continuation(user_error_cont)
-add_positive_to_negative_infinity_cont = Continuation(user_error_cont)
-multiply_infinity_by_zero_cont = Continuation(user_error_cont)
+arithmetic_error_cont = Continuation(user_error_cont)
+add_positive_to_negative_infinity_cont = Continuation(arithmetic_error_cont)
+multiply_infinity_by_zero_cont = Continuation(arithmetic_error_cont)
+divide_infinity_cont = Continuation(arithmetic_error_cont)
+divide_by_zero_cont = Continuation(arithmetic_error_cont)
 
 class ErrorObject(KernelValue):
     type_name = 'error-object'
@@ -988,15 +1017,25 @@ def signal_arity_mismatch(expected_arity, actual_arguments):
                   actual_arguments.tostring()),
            Pair(String(expected_arity), Pair(actual_arguments, nil)))
 
-def signal_add_positive_to_negative_infinity_error(pos, neg):
+def signal_add_positive_to_negative_infinity(pos, neg):
     raise_(add_positive_to_negative_infinity_cont,
            "Tried to add positive to negative infinity",
            Pair(pos, Pair(neg, nil)))
 
-def signal_multiply_infinity_by_zero_error(inf, zero):
+def signal_multiply_infinity_by_zero(inf, zero):
     raise_(multiply_infinity_by_zero_cont,
            "Tried to multiply infinity by zero",
            Pair(inf, Pair(zero, nil)))
+
+def signal_divide_infinity(inf, divisor):
+    raise_(divide_infinity_cont,
+           "Tried to divide infinity",
+           Pair(inf, Pair(divisor, nil)))
+
+def signal_divide_by_zero(dividend, zero):
+    raise_(divide_by_zero_cont,
+           "Tried to divide by zero",
+           Pair(dividend, Pair(zero, nil)))
 
 # Not actual kernel type.
 class KernelExit(Exception):

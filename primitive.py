@@ -321,6 +321,15 @@ def mul(vals):
         accum = accum.mul(v)
     return accum
 
+@export('div', [kt.Number, kt.Number])
+def div(a, d):
+    if isinstance(a, kt.Infinity):
+        kt.signal_divide_infinity(a, d)
+    elif d.equal(kt.zero):
+        kt.signal_divide_by_zero(a, d)
+    else:
+        return a.divide_by(d)
+
 @export('-')
 def sub(vals):
     ls = kt.pythonify_list(vals)
@@ -577,6 +586,8 @@ _exports['arity-mismatch-continuation'] = kt.arity_mismatch_cont
 _exports['symbol-not-found-continuation'] = kt.symbol_not_found_cont
 _exports['add-positive-to-negative-infinity-continuation'] = kt.add_positive_to_negative_infinity_cont
 _exports['multiply-infinity-by-zero-continuation'] = kt.multiply_infinity_by_zero_cont
+_exports['divide-infinity-continuation'] = kt.divide_infinity_cont
+_exports['divide-by-zero-continuation'] = kt.divide_by_zero_cont
 
 _ground_env = kt.Environment([], _exports)
 

@@ -321,6 +321,17 @@ def mul(vals):
         accum = accum.mul(v)
     return accum
 
+@export('zero?')
+def zerop(vals):
+    for v in kt.iter_list(vals):
+        # Robustness: we need to check the type of all elements, even those
+        # after the first non-zero.
+        kt.check_type(v, kt.Number)
+    for v in kt.iter_list(vals):
+        if not kt.zero.equal(v):
+            return kt.false
+    return kt.true
+
 @export('div', [kt.Number, kt.Number])
 def div(a, d):
     if isinstance(a, kt.Infinity):
@@ -347,7 +358,6 @@ def div_and_mod(a, d):
         kt.signal_divide_by_zero(a, d)
     else:
         return a.divmod_by(d)
-
 
 @export('-')
 def sub(vals):

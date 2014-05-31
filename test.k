@@ -527,6 +527,20 @@
   (div-and-mod 888888888888888888888888888888888888888888888888888888888888888
                444444444444444444444444444444444444444444444444444444444444444))
 
+($test "zero?, trivial"
+  #t
+  (zero?))
+
+($test "zero? unary"
+  (#t #f)
+  (list (zero? 0) (zero? 1)))
+
+($test "zero?, n-ary"
+  (#t #f #f)
+  (list (zero? 0 0 0)
+        (zero? 1 0 0)
+        (zero? 0 0 1)))
+
 ; Encapsulations.
 
 ($define! (e1 p1? d1) (make-encapsulation-type))

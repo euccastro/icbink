@@ -7,31 +7,11 @@
 ($define! not?
   ($lambda (x) ($if x #f #t)))
 
-($define! and?
-  ($lambda x
-    ($cond ((null? x) #t)
-          ((car x) (apply and? (cdr x)))
-          (#t #f))))
-
 ($define! or?
   ($lambda x
     ($cond ((null? x) #f)
           ((car x) #t)
           (#t (apply or? (cdr x))))))
-
-($define! $and?
-  ($vau x e
-    ($cond ((null? x) #t)
-          ((null? (cdr x)) (eval (car x) e))
-          ((eval (car x) e) (apply (wrap $and?) (cdr x) e))
-          (#t #f))))
-
-($define! $or?
-  ($vau x e
-    ($cond ((null? x) #f)
-           ((null? (cdr x)) (eval (car x) e))
-           ((eval (car x) e) #t)
-           (#t (apply (wrap $or?) (cdr x) e)))))
 
 ($define! get-current-environment
   ($vau () e e))

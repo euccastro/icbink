@@ -449,6 +449,27 @@ def append(vals):
             ret = kt.Pair(el, ret)
     return ret
 
+@export('and?')
+def andp(vals):
+    try:
+        ret = kt.true
+        for v in kt.iter_list(vals):
+            kt.check_type(v, kt.Boolean)
+            if ret is kt.true and kt.false.equal(v):
+                ret = kt.false
+        return ret
+    except kt.NonNullListTail:
+        kt.signal_value_error("Called 'and?' with non-list",
+                              kt.Pair(vals, kt.nil))
+
+@export('$and?')
+def s_andp(vals, env, cont):
+    return kt.s_andp(vals, env, cont)
+
+@export('$or?')
+def s_andp(vals, env, cont):
+    return kt.s_orp(vals, env, cont)
+
 # Not standard Kernel functions; for debugging only.
 
 @export('print')
@@ -570,10 +591,15 @@ def check_guards(guards):
 
 def make_pred(cls, name):
     def pred(vals):
-        for val in kt.iter_list(vals):
-            if not isinstance(val, cls):
-                return kt.false
-        return kt.true
+        result = kt.true
+        try:
+            for val in kt.iter_list(vals):
+                if result is kt.true and not isinstance(val, cls):
+                    result = kt.false
+            return result
+        except kt.NonNullListTail:
+            kt.signal_value_error(("Called predicate '%s' with non-list" % name),
+                                  kt.Pair(vals, kt.nil))
     return kt.Applicative(kt.SimplePrimitive(pred, name))
 
 for cls in [kt.Boolean,

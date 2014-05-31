@@ -709,6 +709,52 @@ def evaluate_arguments(vals, env, cont):
         # cdr.
         signal_combine_with_non_list_operands(Pair(vals, nil))
 
+# XXX: DRY
+def s_andp(vals, env, cont):
+    if is_nil(vals):
+        return cont.plug_reduce(true)
+    elif isinstance(vals, Pair):
+        return vals.car, env, AndCont(vals.cdr, env, cont, vals.car.source_pos)
+    else:
+        # XXX: if the arguments are an improper list, this only prints the last
+        # cdr.
+        signal_value_error("$and? with non-list arguments", Pair(vals, nil))
+
+class AndCont(Continuation):
+    def __init__(self, exprs, env, prev, source_pos=None):
+        Continuation.__init__(self, prev, source_pos)
+        self.exprs = exprs
+        self.env = env
+    def _plug_reduce(self, val):
+        check_type(val, Boolean)
+        if true.equal(val):
+            return s_andp(self.exprs, self.env, self.prev)
+        else:
+            return self.prev.plug_reduce(false)
+
+# XXX: DRY
+def s_orp(vals, env, cont):
+    if is_nil(vals):
+        return cont.plug_reduce(false)
+    elif isinstance(vals, Pair):
+        return vals.car, env, OrCont(vals.cdr, env, cont, vals.car.source_pos)
+    else:
+        # XXX: if the arguments are an improper list, this only prints the last
+        # cdr.
+        signal_value_error("$or? with non-list arguments", Pair(vals, nil))
+
+class OrCont(Continuation):
+    def __init__(self, exprs, env, prev, source_pos=None):
+        Continuation.__init__(self, prev, source_pos)
+        self.exprs = exprs
+        self.env = env
+    def _plug_reduce(self, val):
+        check_type(val, Boolean)
+        if true.equal(val):
+            return self.prev.plug_reduce(true)
+        else:
+            return s_orp(self.exprs, self.env, self.prev)
+
 # XXX: refactor to extract common pattern with evaluate_arguments.
 #      this one happens to work on a Python list because we just
 #      happen to build one for transposing the list arguments to

@@ -56,6 +56,8 @@ class Infinity(Number):
         return zero
     def mod(self, other):
         return other
+    def divmod(self, other):
+        return Pair(zero, Pair(other, nil))
 
 class ExactPositiveInfinity(Infinity):
     def tostring(self):
@@ -152,6 +154,12 @@ class Fixnum(Number):
             return Fixnum(self.fixval % other.fixval)
         else:
             return other.mod(self)
+    def divmod_by(self, other):
+        if isinstance(other, Fixnum):
+            dm = divmod(self.fixval, other.fixval)
+            return Pair(Fixnum(dm[0]), Pair(Fixnum(dm[1]), nil))
+        else:
+            return other.divmod(self)
     def neg(self):
         try:
             return Fixnum(-self.fixval)
@@ -226,6 +234,31 @@ class Bignum(Number):
             assert isinstance(other, Number)
             return other.mod(self)
         return try_and_make_fixnum(self.bigval.mod(otherval))
+    def divmod(self, other):
+        if isinstance(other, Bignum):
+            otherval = other.bigval
+        elif isinstance(other, Fixnum):
+            otherval = rbigint.fromint(other.fixval)
+        else:
+            assert isinstance(other, Number)
+            return other.divmod_by(self)
+        d, m = otherval.divmod(self.bigval)
+        return Pair(try_and_make_fixnum(d),
+                    Pair(try_and_make_fixnum(m),
+                         nil))
+
+    def divmod_by(self, other):
+        if isinstance(other, Bignum):
+            otherval = other.bigval
+        elif isinstance(other, Fixnum):
+            otherval = rbigint.fromint(other.fixval)
+        else:
+            assert isinstance(other, Number)
+            return other.divmod(self)
+        d, m = self.bigval.divmod(otherval)
+        return Pair(try_and_make_fixnum(d),
+                    Pair(try_and_make_fixnum(m),
+                         nil))
     def neg(self):
         return try_and_make_fixnum(self.bigval.neg())
 

@@ -339,6 +339,16 @@ def mod(a, d):
     else:
         return a.mod_by(d)
 
+@export('div-and-mod', [kt.Number, kt.Number])
+def div_and_mod(a, d):
+    if isinstance(a, kt.Infinity):
+        kt.signal_divide_infinity(a, d)
+    elif d.equal(kt.zero):
+        kt.signal_divide_by_zero(a, d)
+    else:
+        return a.divmod_by(d)
+
+
 @export('-')
 def sub(vals):
     ls = kt.pythonify_list(vals)

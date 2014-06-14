@@ -65,9 +65,9 @@ class SourcePos(object):
         # Editors show 1-based line and column numbers, while
         # source_pos objects are 0-based.
         print "%s%s, line %s, column %s:" % (prefix,
-                                               self.source_file.path,
-                                               self.line + 1,
-                                               self.column + 1)
+                                             self.source_file.path,
+                                             self.line + 1,
+                                             self.column + 1)
         print "%s%s" % (prefix, self.source_file.lines[self.line])
         print "%s%s^" % (prefix, (" " * self.column))
 

@@ -590,7 +590,10 @@ def load_(path, env, cont):
         if rpath.exists(whole_path):
             try:
                 program = parse_file(whole_path)
-            except (ParseError, LexerError) as e:
+            except ParseError as e:
+                return kt.signal_parse_error(e.nice_error_message(),
+                                             whole_path)
+            except LexerError as e:
                 return kt.signal_parse_error(e.nice_error_message(),
                                              whole_path)
             return program, env, kt.ConstantCont(kt.inert, cont)

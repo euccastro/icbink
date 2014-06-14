@@ -24,7 +24,7 @@ grammar = r"""
     SUPPRESS: "#;";
     LEFT_PAREN: "\(";
     RIGHT_PAREN: "\)";
-    IDENTIFIER: "\+|\-|[a-zA-Z!$%&\*/:<=>\?@\^_~][a-zA-Z0-9!$%&\*\+\-/:<=>\?@\^_~]*";
+    IDENTIFIER: "\+|\-|[a-zA-Z!$%&\*/:<=>\?@\^_~][a-zA-Z0-9!$%&\*\+\-\./:<=>\?@\^_~]*";
     STRING: "\"([^\"]|\\\")*\"";
     EXACT_POSITIVE_INFINITY: "#[eE]\+[iI][nN][fF][iI][nN][iI][tT][yY]";
     EXACT_NEGATIVE_INFINITY: "#[eE]\-[iI][nN][fF][iI][nN][iI][tT][yY]";

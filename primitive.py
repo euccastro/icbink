@@ -3,6 +3,7 @@ from itertools import product
 import os
 from rpython.rlib import jit, rpath, rstring, unroll
 from rpython.rlib.parsing.parsing import ParseError
+from rpython.rlib.parsing.deterministic import LexerError
 from rpython.rlib.rbigint import rbigint
 
 import debug
@@ -589,7 +590,7 @@ def load_(path, env, cont):
         if rpath.exists(whole_path):
             try:
                 program = parse_file(whole_path)
-            except ParseError as e:
+            except (ParseError, LexerError) as e:
                 return kt.signal_parse_error(e.nice_error_message(),
                                              whole_path)
             return program, env, kt.ConstantCont(kt.inert, cont)

@@ -18,16 +18,16 @@ import kernel_type as kt
 # point.  They're just something to work with; I'll review them for correctness
 # later.
 grammar = r"""
-    BOOLEAN: "#t|#f";
-    INERT: "#inert";
-    IGNORE_VAL: "#ignore";
+    BOOLEAN: "#[tfTF]";
+    INERT: "#[iI][nN][eE][rR][tT]";
+    IGNORE_VAL: "#[iI][gG][nN][oO][rR][eE]";
     SUPPRESS: "#;";
     LEFT_PAREN: "\(";
     RIGHT_PAREN: "\)";
     IDENTIFIER: "\+|\-|[a-zA-Z!$%&\*/:<=>\?@\^_~][a-zA-Z0-9!$%&\*\+\-/:<=>\?@\^_~]*";
     STRING: "\"([^\"]|\\\")*\"";
-    EXACT_POSITIVE_INFINITY: "#e\+infinity";
-    EXACT_NEGATIVE_INFINITY: "#e\-infinity";
+    EXACT_POSITIVE_INFINITY: "#[eE]\+[iI][nN][fF][iI][nN][iI][tT][yY]";
+    EXACT_NEGATIVE_INFINITY: "#[eE]\-[iI][nN][fF][iI][nN][iI][tT][yY]";
     EXACT_BIN_INTEGER: "(#[eE]#[bB]|#[bB]#[eE]|#[bB])[\+\-]?[01]+";
     EXACT_OCT_INTEGER: "(#[eE]#[oO]|#[oO]#[eE]|#[oO])[\+\-]?[0-7]+";
     EXACT_DEC_INTEGER: "(#[eE]#[dD]|#[dD]#[eE]|#[eE]|#[dD])?[\+\-]?[0-9]+";
@@ -80,10 +80,12 @@ class Visitor(RPythonVisitor):
     def visit_sequence(self, node):
         return self.visit_list(node)
     def visit_BOOLEAN(self, node):
-        return kt.Boolean(node.token.source == '#t',
+        val = (node.token.source == '#t'
+               or node.token.source == '#T')
+        return kt.Boolean(val,
                           self.make_src_pos(node))
     def visit_IDENTIFIER(self, node):
-        return kt.Symbol(node.token.source,
+        return kt.Symbol(node.token.source.lower(),
                          self.make_src_pos(node))
     def visit_STRING(self, node):
         # Remove quotation marks.

@@ -27,15 +27,23 @@ def export(name, argtypes=None, simple=True):
                 args_tuple = ()
                 rest = otree
                 for type_ in unroll_argtypes:
-                    assert isinstance(rest, kt.Pair)
-                    arg = rest.car
-                    rest = rest.cdr
-                    kt.check_type(arg, type_)
-                    assert isinstance(arg, type_)
-                    args_tuple += (arg,)
-                assert kt.is_nil(rest)
-                args_tuple += etc
-                return fn(*args_tuple)
+                    if isinstance(rest, kt.Pair):
+                        arg = rest.car
+                        rest = rest.cdr
+                        kt.check_type(arg, type_)
+                        if isinstance(arg, type_):
+                            args_tuple += (arg,)
+                        else:
+                            kt.signal_type_error(type_, arg)
+                    else:
+                        kt.signal_arity_mismatch(str(len(argtypes)),
+                                                 otree)
+                if kt.is_nil(rest):
+                    args_tuple += etc
+                    return fn(*args_tuple)
+                else:
+                    kt.signal_arity_mismatch(str(len(argtypes)),
+                                             otree)
         if simple:
             comb = kt.SimplePrimitive(wrapped, name)
         else:

@@ -873,7 +873,7 @@ class IfCont(Continuation):
         elif is_false(val):
             return self.alternative, self.env, self.prev
         else:
-            assert False, "not #t nor #f: %s" % val
+            signal_type_error(Boolean, val)
 
 class CondCont(Continuation):
     def __init__(self, clauses, env, prev, source_pos=None):

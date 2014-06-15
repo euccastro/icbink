@@ -516,6 +516,9 @@ class Applicative(Combiner):
 class Environment(KernelValue):
     type_name = 'environment'
     def __init__(self, parents, bindings=None, source_pos=None):
+        for each in parents:
+            check_type(each, Environment)
+            assert isinstance(each, Environment)
         self.parents = parents
         self.bindings = bindings or {}
         self.source_pos = source_pos

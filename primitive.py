@@ -1,6 +1,7 @@
 from itertools import product
-
 import os
+import stat
+
 from rpython.rlib import jit, rpath, rstring, unroll
 from rpython.rlib.parsing.parsing import ParseError
 from rpython.rlib.parsing.deterministic import LexerError
@@ -589,13 +590,20 @@ driver = jit.JitDriver(reds=['env', 'cont'],
                        get_printable_location=get_printable_location)
 
 
+def file_exists(path):
+    try:
+        st = os.stat(path)
+    except OSError:
+        return False
+    return not stat.S_ISDIR(st.st_mode)
+
 @export('load', [kt.String], simple=False)
 def load_(path, env, cont):
     # XXX: have some programmatically editable search path?
     filename = path.strval
     for dir_path in search_paths:
-        whole_path = rpath.join(dir_path, [filename])
-        if rpath.exists(whole_path):
+        whole_path = rpath.rjoin(dir_path, filename)
+        if file_exists(whole_path):
             try:
                 program = parse_file(whole_path)
             except ParseError as e:
@@ -690,11 +698,19 @@ _exports['divide-by-zero-continuation'] = kt.divide_by_zero_cont
 
 _ground_env = kt.Environment([], _exports)
 
-here = rpath.dirname(__file__)
+def dirname(path):
+    norm = rpath.rnormpath(path)
+    if not rpath.risabs(norm):
+        norm = rpath.rjoin(".", norm)
+    return norm.rsplit(rpath.sep, 1)[0]
 
-kernel_eval(parse_file(rpath.join(here, ["kernel.k"])), _ground_env)
+print "file si", __file__
+
+here = dirname(__file__)
+
+kernel_eval(parse_file(rpath.rjoin(here, "kernel.k")), _ground_env)
 _extended_env = kt.Environment([_ground_env], {})
-kernel_eval(parse_file(rpath.join(here, ["extension.k"])), _extended_env)
+kernel_eval(parse_file(rpath.rjoin(here, "extension.k")), _extended_env)
 
 def standard_value(name):
     return _ground_env.bindings[name]

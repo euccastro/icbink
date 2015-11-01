@@ -11,9 +11,9 @@ Setup
 
 * Clone the repo.
 * Download `the PyPy 4.0.0 source`_ (other versions might work, but I'm only testing this one), unzip it in a sibling directory to the icbink repo, and `build PyPy`_.
-* Create a virtualenv with `virtualenv -p <the pypy path>/pypy/goal/pypy-c venv`
-* Add the pypy to the paths of the virtualenv: `echo <the pypy path> > venv/site-packages/pypy.pth`
-* Activate the virtualenv: `source venv/bin/activate`
+* Create a virtualenv with :code:`virtualenv -p <the pypy path>/pypy/goal/pypy-c venv`
+* Add the pypy to the paths of the virtualenv: :code:`echo <the pypy path> > venv/site-packages/pypy.pth`
+* Activate the virtualenv: :code:`source venv/bin/activate`
 
 Now the various scripts should work.  You should be able to build icbink with or without JIT, and/or run the tests.
 
@@ -31,6 +31,7 @@ Sources of inspiration/pilfering:
 * Queinnec's `Lisp in Small Pieces`_
 
 * Andrés Navarro's Klisp_: to my knowledge, the most mature and complete implementation to date.
+
 
 .. _the PyPy 4.0.0 source: https://bitbucket.org/pypy/pypy/downloads/pypy-4.0.0-src.zip
 .. _build PyPy: http://pypy.org/download.html#building-from-source

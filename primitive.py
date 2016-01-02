@@ -181,7 +181,10 @@ def list_(vals):
 
 @export('list*')
 def list_star(vals):
-    assert isinstance(vals, kt.Pair)
+    if kt.is_nil(vals):
+        kt.signal_arity_mismatch(">=1", vals)
+    if not isinstance(vals, kt.Pair):
+        kt.signal_value_error("Called list* with non-list", vals)
     if isinstance(vals.cdr, kt.Pair):
         return kt.Pair(vals.car, list_star(vals.cdr))
     elif kt.is_nil(vals.cdr):

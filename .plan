@@ -1,17 +1,10 @@
 Work on compliance with kplts
+     Then on completing kplts itself.
 
 Make pythonify_list signal a proper Kernel type/value error
 
 Main concepts not done yet:
     Ports
-
-Go back and revisit the full R-1RK for compliance.
-    More tests for everything, esp. guarded continuations.
-        Launch tests as a separate project, import as submodule?
-        Pilfer tests from SINK, Klisp and others.
-            Maybe when I get closer to claiming feature completeness?
-            Try and compile a pure-Kernel test suite that other implementations can use to test for conformance?
-                Community effort?
 
 Better error messages:
     source_pos
